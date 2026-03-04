@@ -13,6 +13,9 @@
   --text:rgba(255,255,255,0.92);
   --muted:rgba(255,255,255,0.70);
   --shadow:0 16px 48px rgba(0,0,0,0.45);
+  --radius-lg:18px;
+  --radius-md:12px;
+  --ui-grad:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
 }
 
 *{box-sizing:border-box}
@@ -41,8 +44,9 @@ body{
   gap:12px;
   padding:10px 14px;
   border-bottom:1px solid rgba(255,255,255,0.10);
-  background:linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+  background:var(--ui-grad);
   backdrop-filter: blur(10px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.22);
 }
 
 #top-left, #top-right{
@@ -120,17 +124,19 @@ body{
 }
 
 button{
-  border:1px solid rgba(255,255,255,0.12);
+  border:1px solid rgba(255,255,255,0.14);
   background:rgba(255,255,255,0.08);
   color:var(--text);
   padding:8px 12px;
-  border-radius:12px;
+  border-radius:var(--radius-md);
   cursor:pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  font-weight:600;
 }
 button:hover{transform:translateY(-1px);background:rgba(255,255,255,0.11)}
 button:active{transform:translateY(0px);background:rgba(255,255,255,0.08)}
 button:disabled{opacity:0.45;cursor:not-allowed;transform:none}
+button:focus-visible{outline:2px solid rgba(116,192,252,0.9);outline-offset:2px}
 
 #pause-btn.active{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.26)}
 #vfx-btn.active{background:rgba(116,192,252,0.14);border-color:rgba(116,192,252,0.30)}
@@ -156,14 +162,15 @@ button:disabled{opacity:0.45;cursor:not-allowed;transform:none}
 }
 
 .side-card{
-  background:rgba(20,25,30,0.70);
+  background:linear-gradient(180deg, rgba(24,30,38,0.88), rgba(16,20,26,0.85));
   border:1px solid rgba(255,255,255,0.12);
-  border-radius:20px;
+  border-radius:var(--radius-lg);
   padding:12px 12px 14px;
   backdrop-filter:blur(5px);
   box-shadow:0 10px 30px rgba(0,0,0,0.38);
-  transition:all 0.3s ease;
+  transition:all 0.2s ease;
 }
+.side-card:hover{border-color:rgba(255,255,255,0.18)}
 
 .side-head{margin-bottom:10px;}
 .side-title{font-weight:950;letter-spacing:0.3px;}
@@ -177,7 +184,7 @@ button:disabled{opacity:0.45;cursor:not-allowed;transform:none}
 }
 
 #gameCanvas{
-  border-radius:18px;
+  border-radius:var(--radius-lg);
   border:1px solid rgba(255,255,255,0.12);
   background:rgba(0,0,0,0.22);
   box-shadow:var(--shadow);
@@ -224,7 +231,7 @@ button:disabled{opacity:0.45;cursor:not-allowed;transform:none}
 .modal{
   width:min(860px,calc(100vw - 32px));max-height:min(82vh,760px);
   display:flex;flex-direction:column;
-  border-radius:18px;border:1px solid rgba(255,255,255,0.12);
+  border-radius:var(--radius-lg);border:1px solid rgba(255,255,255,0.12);
   background:rgba(0,0,0,0.65);backdrop-filter:blur(14px);box-shadow:var(--shadow);
 }
 .modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.10);}
