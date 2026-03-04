@@ -36,10 +36,8 @@ import {
   skillUpgradeCost,
 } from "../systems/skills.js";
 
-import { clamp, lerp, dist2, distToRectPerimeter } from "./targeting.js";
-import { rollItemRarityBestOf, rollOptionsBestOf } from "./combat.js";
-import { hideContextMenus, cycleSpeed, togglePause, toggleVfx } from "../ui/hud.js";
-import { buildKeyboardShortcutHelpHTML } from "../ui/tooltip.js";
+import { clamp, lerp, dist2, distToRectPerimeter, rollItemRarityBestOf, rollOptionsBestOf } from "./combat.js";
+import { hideContextMenus, cycleSpeed, togglePause, toggleVfx, buildKeyboardShortcutHelpHTML } from "../ui/hud.js";
 import { buildShopItems } from "../systems/shop.js";
 
 // --------------------
