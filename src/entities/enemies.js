@@ -122,7 +122,9 @@ function id() {
 
 function hpScale(round) {
   const r = Math.max(1, round);
-  return Math.pow(1.13, r - 1);
+  // 후반 급격한 난이도 상승 완화: 1~15는 1.12, 이후 1.09로 감쇠
+  if (r <= 15) return Math.pow(1.12, r - 1);
+  return Math.pow(1.12, 14) * Math.pow(1.09, r - 15);
 }
 
 function armorScale(round) {
@@ -172,7 +174,7 @@ export function makeEnemy(type, path, round, extra = {}, waveType = WAVE_TYPE.NO
   if (extra.armor != null) armor = Number(extra.armor) || 0;
   armor = Math.round(Math.max(0, armor * wmod.armorMul) * 10) / 10;
 
-  const bossMul = isBoss ? 1.55 : type === ENEMY_TYPES.ELITE ? 1.20 : 1.0;
+  const bossMul = isBoss ? 1.45 : type === ENEMY_TYPES.ELITE ? 1.18 : 1.0;
   maxHp = Math.round(maxHp * mul * bossMul * (isBoss ? 1.0 : wmod.hpMul));
 
   // 속도 수정 (보스는 웨이브 속도 영향 적게)
