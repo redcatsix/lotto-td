@@ -1,0 +1,710 @@
+[debug] [2026-02-21T00:08:04.309Z] ----------------------------------------------------------------------
+[debug] [2026-02-21T00:08:04.311Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\redca\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting --debug
+[debug] [2026-02-21T00:08:04.311Z] CLI Version:   15.6.0
+[debug] [2026-02-21T00:08:04.311Z] Platform:      win32
+[debug] [2026-02-21T00:08:04.311Z] Node Version:  v22.18.0
+[debug] [2026-02-21T00:08:04.311Z] Time:          Sat Feb 21 2026 09:08:04 GMT+0900 (대한민국 표준시)
+[debug] [2026-02-21T00:08:04.311Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-21T00:08:05.690Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-21T00:08:05.691Z] > authorizing via signed-in user (redcat683@gmail.com)
+[debug] [2026-02-21T00:08:05.691Z] [iam] checking project lotto-td for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-21T00:08:05.692Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:05.692Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:05.693Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions [none]
+[debug] [2026-02-21T00:08:05.693Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions  x-goog-user-project=lotto-td
+[debug] [2026-02-21T00:08:05.693Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T00:08:05.932Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions 200
+[debug] [2026-02-21T00:08:05.932Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T00:08:05.932Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:05.933Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:05.933Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td [none]
+[debug] [2026-02-21T00:08:06.333Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td 200
+[debug] [2026-02-21T00:08:06.333Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td {"projectId":"lotto-td","projectNumber":"648056845360","displayName":"lotto-td","name":"projects/lotto-td","resources":{"hostingSite":"lotto-td"},"state":"ACTIVE","etag":"1_269bb2ce-596d-47ce-bef1-c573a5614cb2"}
+[info] 
+[info] === Deploying to 'lotto-td'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-21T00:08:06.337Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:06.337Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:06.337Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions [none]
+[debug] [2026-02-21T00:08:06.337Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-02-21T00:08:07.800Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions 200
+[debug] [2026-02-21T00:08:07.800Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"name":"projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[lotto-td]: beginning deploy... 
+[info] i  hosting[lotto-td]: found 8 files in public 
+[debug] [2026-02-21T00:08:07.810Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-21T00:08:07.820Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:07.820Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:07.820Z] [hosting] hash cache [cHVibGlj] stored for 8 files
+[debug] [2026-02-21T00:08:07.821Z] [hosting][hash queue][FINAL] {"max":8,"min":1,"avg":1.875,"active":0,"complete":8,"success":8,"errored":0,"retried":0,"total":8,"elapsed":10}
+[debug] [2026-02-21T00:08:07.821Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832:populateFiles [none]
+[debug] [2026-02-21T00:08:07.821Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832:populateFiles {"files":{"/units.js":"83aaa76729b7831bc3d7c5f99e2170516ce60ab5827b527eeae89d194cfb7882","/style.css":"8f0baa7566a0f4a52296c14a8b6e79a59415fd09dc1b234dd64f62ac6ce6b23e","/skills.js":"4ea88fbc74c73730774e67092076b6fb21e0568e80f7ab07b0b0db834ec2de8e","/main.js":"922342db8a61cc8188efca6301f00fcf5ce833edcdc403080af070b27420f2c2","/index.html":"927015029cb74fdbf56a88acce663adf450b35924624fe0cf8e7b7bfc798abcc","/enemies.js":"c928543a1ce1fa1a723da349df8cafc3b308717f419dab4128a2b62f500c9758","/economy.js":"d1c368ba4deffea3826284c8eb2c0a0712e348089324e5bff02649b7ffdd8f3c","/engine.js":"b1ca6268ac1ad9ea4961f86a873c6d35f565df0c1ca8659124fac28d7e0a283f"}}
+[debug] [2026-02-21T00:08:08.572Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832:populateFiles 200
+[debug] [2026-02-21T00:08:08.572Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/5562d0ed96e21832/files"}
+[debug] [2026-02-21T00:08:08.573Z] [hosting][populate queue][FINAL] {"max":754,"min":754,"avg":754,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":754}
+[debug] [2026-02-21T00:08:08.573Z] [hosting] uploads queued: 0
+[debug] [2026-02-21T00:08:08.573Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1771632488573}
+[info] i  hosting: upload complete 
+[info] +  hosting[lotto-td]: file upload complete 
+[debug] [2026-02-21T00:08:08.573Z] [hosting] deploy completed after 771ms
+[debug] [2026-02-21T00:08:08.574Z] [
+  {
+    "config": {
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "site": "lotto-td"
+    },
+    "version": "projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832"
+  }
+]
+[info] i  hosting[lotto-td]: finalizing version... 
+[debug] [2026-02-21T00:08:08.574Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:08.575Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:08.575Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/5562d0ed96e21832 updateMask=status%2Cconfig
+[debug] [2026-02-21T00:08:08.575Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/5562d0ed96e21832 {"status":"FINALIZED","config":{}}
+[debug] [2026-02-21T00:08:09.447Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/5562d0ed96e21832 200
+[debug] [2026-02-21T00:08:09.447Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/5562d0ed96e21832 {"name":"projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T00:08:03.788033Z","createUser":{"email":"redcat683@gmail.com"},"finalizeTime":"2026-02-21T00:08:05.914509Z","finalizeUser":{"email":"redcat683@gmail.com"}}
+[debug] [2026-02-21T00:08:09.447Z] [hosting] finalized version for lotto-td:[object Object]
+[info] +  hosting[lotto-td]: version finalized 
+[info] i  hosting[lotto-td]: releasing new version... 
+[debug] [2026-02-21T00:08:09.448Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:09.448Z] Checked if tokens are valid: true, expires at: 1771635421771
+[debug] [2026-02-21T00:08:09.448Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases versionName=projects%2F648056845360%2Fsites%2Flotto-td%2Fversions%2F5562d0ed96e21832
+[debug] [2026-02-21T00:08:09.448Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {}
+[debug] [2026-02-21T00:08:10.174Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases 200
+[debug] [2026-02-21T00:08:10.174Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771632485967000","version":{"name":"projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T00:08:03.788033Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T00:08:05.914509Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T00:08:05.967Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[debug] [2026-02-21T00:08:10.174Z] [hosting] release: {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771632485967000","version":{"name":"projects/648056845360/sites/lotto-td/versions/5562d0ed96e21832","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T00:08:03.788033Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T00:08:05.914509Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T00:08:05.967Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[info] +  hosting[lotto-td]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/lotto-td/overview
+[info] Hosting URL: https://lotto-td.web.app
+[debug] [2026-02-21T08:16:37.404Z] ----------------------------------------------------------------------
+[debug] [2026-02-21T08:16:37.406Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\redca\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting --debug
+[debug] [2026-02-21T08:16:37.406Z] CLI Version:   15.6.0
+[debug] [2026-02-21T08:16:37.406Z] Platform:      win32
+[debug] [2026-02-21T08:16:37.406Z] Node Version:  v22.18.0
+[debug] [2026-02-21T08:16:37.406Z] Time:          Sat Feb 21 2026 17:16:37 GMT+0900 (대한민국 표준시)
+[debug] [2026-02-21T08:16:37.407Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-21T08:16:39.802Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-21T08:16:39.804Z] > authorizing via signed-in user (redcat683@gmail.com)
+[debug] [2026-02-21T08:16:39.804Z] [iam] checking project lotto-td for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-21T08:16:39.805Z] Checked if tokens are valid: false, expires at: 1771635421771
+[debug] [2026-02-21T08:16:39.806Z] Checked if tokens are valid: false, expires at: 1771635421771
+[debug] [2026-02-21T08:16:39.806Z] > refreshing access token with scopes: []
+[debug] [2026-02-21T08:16:39.808Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-21T08:16:39.808Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T08:16:40.040Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-21T08:16:40.041Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T08:16:40.049Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions [none]
+[debug] [2026-02-21T08:16:40.049Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions  x-goog-user-project=lotto-td
+[debug] [2026-02-21T08:16:40.049Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T08:16:40.265Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions 200
+[debug] [2026-02-21T08:16:40.266Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T08:16:40.266Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:40.266Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:40.268Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td [none]
+[debug] [2026-02-21T08:16:40.683Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td 200
+[debug] [2026-02-21T08:16:40.683Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td {"projectId":"lotto-td","projectNumber":"648056845360","displayName":"lotto-td","name":"projects/lotto-td","resources":{"hostingSite":"lotto-td"},"state":"ACTIVE","etag":"1_269bb2ce-596d-47ce-bef1-c573a5614cb2"}
+[info] 
+[info] === Deploying to 'lotto-td'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-21T08:16:40.688Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:40.688Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:40.688Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions [none]
+[debug] [2026-02-21T08:16:40.688Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-02-21T08:16:42.059Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions 200
+[debug] [2026-02-21T08:16:42.059Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"name":"projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[lotto-td]: beginning deploy... 
+[info] i  hosting[lotto-td]: found 8 files in public 
+[debug] [2026-02-21T08:16:42.075Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-21T08:16:42.094Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.094Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.095Z] [hosting] hash cache [cHVibGlj] stored for 8 files
+[debug] [2026-02-21T08:16:42.095Z] [hosting][hash queue][FINAL] {"max":13,"min":5,"avg":7.125,"active":0,"complete":8,"success":8,"errored":0,"retried":0,"total":8,"elapsed":18}
+[debug] [2026-02-21T08:16:42.095Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386:populateFiles [none]
+[debug] [2026-02-21T08:16:42.096Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386:populateFiles {"files":{"/style.css":"8fa54135fe5328d43f789b20571021fde521fa2e970a04166e886d320eda8514","/main.js":"3cff7d021031e08bd77883f451f25b08351295cf959276050008119321ac2bfb","/skills.js":"4ea88fbc74c73730774e67092076b6fb21e0568e80f7ab07b0b0db834ec2de8e","/index.html":"25534f3d1eef3370188f06e63eb4860de74c2af0e133ed13b0e1d4daa5fff22f","/units.js":"4d3d16655005dca90e9dbd7e84bfb3fb97a4100ad8f34cf1c00f30d515865c4c","/economy.js":"d1c368ba4deffea3826284c8eb2c0a0712e348089324e5bff02649b7ffdd8f3c","/enemies.js":"c928543a1ce1fa1a723da349df8cafc3b308717f419dab4128a2b62f500c9758","/engine.js":"fffa9c5c3aead5bddeabea9fc09f71a70448eb1e8cb9bbc694602860487cee4f"}}
+[debug] [2026-02-21T08:16:42.907Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386:populateFiles 200
+[debug] [2026-02-21T08:16:42.908Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386:populateFiles {"uploadRequiredHashes":["4d3d16655005dca90e9dbd7e84bfb3fb97a4100ad8f34cf1c00f30d515865c4c","fffa9c5c3aead5bddeabea9fc09f71a70448eb1e8cb9bbc694602860487cee4f","8fa54135fe5328d43f789b20571021fde521fa2e970a04166e886d320eda8514","3cff7d021031e08bd77883f451f25b08351295cf959276050008119321ac2bfb","25534f3d1eef3370188f06e63eb4860de74c2af0e133ed13b0e1d4daa5fff22f"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files"}
+[debug] [2026-02-21T08:16:42.908Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.908Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.909Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.909Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.909Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.909Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.910Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.910Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.910Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.910Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:42.910Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/4d3d16655005dca90e9dbd7e84bfb3fb97a4100ad8f34cf1c00f30d515865c4c [none]
+[debug] [2026-02-21T08:16:42.910Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/4d3d16655005dca90e9dbd7e84bfb3fb97a4100ad8f34cf1c00f30d515865c4c [stream]
+[debug] [2026-02-21T08:16:42.911Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/fffa9c5c3aead5bddeabea9fc09f71a70448eb1e8cb9bbc694602860487cee4f [none]
+[debug] [2026-02-21T08:16:42.911Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/fffa9c5c3aead5bddeabea9fc09f71a70448eb1e8cb9bbc694602860487cee4f [stream]
+[debug] [2026-02-21T08:16:42.913Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/8fa54135fe5328d43f789b20571021fde521fa2e970a04166e886d320eda8514 [none]
+[debug] [2026-02-21T08:16:42.913Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/8fa54135fe5328d43f789b20571021fde521fa2e970a04166e886d320eda8514 [stream]
+[debug] [2026-02-21T08:16:42.914Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/3cff7d021031e08bd77883f451f25b08351295cf959276050008119321ac2bfb [none]
+[debug] [2026-02-21T08:16:42.914Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/3cff7d021031e08bd77883f451f25b08351295cf959276050008119321ac2bfb [stream]
+[debug] [2026-02-21T08:16:42.915Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/25534f3d1eef3370188f06e63eb4860de74c2af0e133ed13b0e1d4daa5fff22f [none]
+[debug] [2026-02-21T08:16:42.915Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/25534f3d1eef3370188f06e63eb4860de74c2af0e133ed13b0e1d4daa5fff22f [stream]
+[debug] [2026-02-21T08:16:42.916Z] [hosting][populate queue][FINAL] {"max":817,"min":817,"avg":817,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":823}
+[debug] [2026-02-21T08:16:42.916Z] [hosting] uploads queued: 5
+[debug] [2026-02-21T08:16:44.066Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/25534f3d1eef3370188f06e63eb4860de74c2af0e133ed13b0e1d4daa5fff22f 200
+[debug] [2026-02-21T08:16:44.066Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/25534f3d1eef3370188f06e63eb4860de74c2af0e133ed13b0e1d4daa5fff22f [stream]
+[info] i  hosting: uploading new files [1/5] (20%) 
+[debug] [2026-02-21T08:16:44.121Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/8fa54135fe5328d43f789b20571021fde521fa2e970a04166e886d320eda8514 200
+[debug] [2026-02-21T08:16:44.121Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/8fa54135fe5328d43f789b20571021fde521fa2e970a04166e886d320eda8514 [stream]
+[debug] [2026-02-21T08:16:44.225Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/3cff7d021031e08bd77883f451f25b08351295cf959276050008119321ac2bfb 200
+[debug] [2026-02-21T08:16:44.225Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/3cff7d021031e08bd77883f451f25b08351295cf959276050008119321ac2bfb [stream]
+[debug] [2026-02-21T08:16:44.273Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/fffa9c5c3aead5bddeabea9fc09f71a70448eb1e8cb9bbc694602860487cee4f 200
+[debug] [2026-02-21T08:16:44.273Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/fffa9c5c3aead5bddeabea9fc09f71a70448eb1e8cb9bbc694602860487cee4f [stream]
+[debug] [2026-02-21T08:16:44.278Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/4d3d16655005dca90e9dbd7e84bfb3fb97a4100ad8f34cf1c00f30d515865c4c 200
+[debug] [2026-02-21T08:16:44.278Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/9acebec7bbfea386/files/4d3d16655005dca90e9dbd7e84bfb3fb97a4100ad8f34cf1c00f30d515865c4c [stream]
+[debug] [2026-02-21T08:16:44.279Z] [hosting][upload queue][FINAL] {"max":1371,"min":1156,"avg":1284.2,"active":0,"complete":5,"success":5,"errored":0,"retried":0,"total":5,"elapsed":1371}
+[info] i  hosting: upload complete 
+[info] +  hosting[lotto-td]: file upload complete 
+[debug] [2026-02-21T08:16:44.279Z] [hosting] deploy completed after 2217ms
+[debug] [2026-02-21T08:16:44.279Z] [
+  {
+    "config": {
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "site": "lotto-td"
+    },
+    "version": "projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386"
+  }
+]
+[info] i  hosting[lotto-td]: finalizing version... 
+[debug] [2026-02-21T08:16:44.280Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:44.280Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:44.280Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/9acebec7bbfea386 updateMask=status%2Cconfig
+[debug] [2026-02-21T08:16:44.281Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/9acebec7bbfea386 {"status":"FINALIZED","config":{}}
+[debug] [2026-02-21T08:16:44.899Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/9acebec7bbfea386 200
+[debug] [2026-02-21T08:16:44.899Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/9acebec7bbfea386 {"name":"projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T08:16:37.864517Z","createUser":{"email":"redcat683@gmail.com"},"finalizeTime":"2026-02-21T08:16:41.245774Z","finalizeUser":{"email":"redcat683@gmail.com"}}
+[debug] [2026-02-21T08:16:44.900Z] [hosting] finalized version for lotto-td:[object Object]
+[info] +  hosting[lotto-td]: version finalized 
+[info] i  hosting[lotto-td]: releasing new version... 
+[debug] [2026-02-21T08:16:44.900Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:44.900Z] Checked if tokens are valid: true, expires at: 1771665399041
+[debug] [2026-02-21T08:16:44.900Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases versionName=projects%2F648056845360%2Fsites%2Flotto-td%2Fversions%2F9acebec7bbfea386
+[debug] [2026-02-21T08:16:44.900Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {}
+[debug] [2026-02-21T08:16:45.602Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases 200
+[debug] [2026-02-21T08:16:45.602Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771661801284000","version":{"name":"projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T08:16:37.864517Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T08:16:41.245774Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T08:16:41.284Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[debug] [2026-02-21T08:16:45.602Z] [hosting] release: {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771661801284000","version":{"name":"projects/648056845360/sites/lotto-td/versions/9acebec7bbfea386","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T08:16:37.864517Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T08:16:41.245774Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T08:16:41.284Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[info] +  hosting[lotto-td]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/lotto-td/overview
+[info] Hosting URL: https://lotto-td.web.app
+[debug] [2026-02-21T09:09:52.656Z] ----------------------------------------------------------------------
+[debug] [2026-02-21T09:09:52.658Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\redca\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting --debug
+[debug] [2026-02-21T09:09:52.659Z] CLI Version:   15.6.0
+[debug] [2026-02-21T09:09:52.659Z] Platform:      win32
+[debug] [2026-02-21T09:09:52.659Z] Node Version:  v22.18.0
+[debug] [2026-02-21T09:09:52.659Z] Time:          Sat Feb 21 2026 18:09:52 GMT+0900 (대한민국 표준시)
+[debug] [2026-02-21T09:09:52.659Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-21T09:09:54.016Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-21T09:09:54.017Z] > authorizing via signed-in user (redcat683@gmail.com)
+[debug] [2026-02-21T09:09:54.017Z] [iam] checking project lotto-td for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-21T09:09:54.018Z] Checked if tokens are valid: false, expires at: 1771665399041
+[debug] [2026-02-21T09:09:54.018Z] Checked if tokens are valid: false, expires at: 1771665399041
+[debug] [2026-02-21T09:09:54.019Z] > refreshing access token with scopes: []
+[debug] [2026-02-21T09:09:54.020Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-21T09:09:54.020Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T09:09:54.249Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-21T09:09:54.250Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T09:09:54.257Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions [none]
+[debug] [2026-02-21T09:09:54.257Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions  x-goog-user-project=lotto-td
+[debug] [2026-02-21T09:09:54.257Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T09:09:54.502Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions 200
+[debug] [2026-02-21T09:09:54.502Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T09:09:54.503Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:54.503Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:54.503Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td [none]
+[debug] [2026-02-21T09:09:54.893Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td 200
+[debug] [2026-02-21T09:09:54.893Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td {"projectId":"lotto-td","projectNumber":"648056845360","displayName":"lotto-td","name":"projects/lotto-td","resources":{"hostingSite":"lotto-td"},"state":"ACTIVE","etag":"1_269bb2ce-596d-47ce-bef1-c573a5614cb2"}
+[info] 
+[info] === Deploying to 'lotto-td'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-21T09:09:54.897Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:54.897Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:54.897Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions [none]
+[debug] [2026-02-21T09:09:54.897Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-02-21T09:09:56.184Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions 200
+[debug] [2026-02-21T09:09:56.185Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"name":"projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[lotto-td]: beginning deploy... 
+[info] i  hosting[lotto-td]: found 8 files in public 
+[debug] [2026-02-21T09:09:56.196Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-21T09:09:56.210Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:56.210Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:56.211Z] [hosting] hash cache [cHVibGlj] stored for 8 files
+[debug] [2026-02-21T09:09:56.211Z] [hosting][hash queue][FINAL] {"max":10,"min":4,"avg":5.375,"active":0,"complete":8,"success":8,"errored":0,"retried":0,"total":8,"elapsed":13}
+[debug] [2026-02-21T09:09:56.211Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db:populateFiles [none]
+[debug] [2026-02-21T09:09:56.211Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db:populateFiles {"files":{"/main.js":"50e84264feff7a2b38ae12b233f1eda82b84cf1ec33fbea725ba6bf189f35f11","/style.css":"a34a288627983bdde5a8e2c0bcb2997ea9fdb04351f3e388514da55aeda645f5","/index.html":"b2252e3d5474fb4420a65851fae7e977f8706c1522901f09ce794b14026f5615","/skills.js":"4ea88fbc74c73730774e67092076b6fb21e0568e80f7ab07b0b0db834ec2de8e","/enemies.js":"c928543a1ce1fa1a723da349df8cafc3b308717f419dab4128a2b62f500c9758","/units.js":"40bfd9af3733d6e2ec0525cbc5c84216718e64fe02a0d2fd57c147de0cee88d2","/economy.js":"d1c368ba4deffea3826284c8eb2c0a0712e348089324e5bff02649b7ffdd8f3c","/engine.js":"322257eeaaf384b36e87acc3fbba28ddb87385a0c12ca066a47cbd8866769ef5"}}
+[debug] [2026-02-21T09:09:57.186Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db:populateFiles 200
+[debug] [2026-02-21T09:09:57.186Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db:populateFiles {"uploadRequiredHashes":["b2252e3d5474fb4420a65851fae7e977f8706c1522901f09ce794b14026f5615","40bfd9af3733d6e2ec0525cbc5c84216718e64fe02a0d2fd57c147de0cee88d2","322257eeaaf384b36e87acc3fbba28ddb87385a0c12ca066a47cbd8866769ef5","50e84264feff7a2b38ae12b233f1eda82b84cf1ec33fbea725ba6bf189f35f11","a34a288627983bdde5a8e2c0bcb2997ea9fdb04351f3e388514da55aeda645f5"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files"}
+[debug] [2026-02-21T09:09:57.187Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.187Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.187Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.187Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.187Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.187Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.188Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.188Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.188Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.188Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:57.188Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/b2252e3d5474fb4420a65851fae7e977f8706c1522901f09ce794b14026f5615 [none]
+[debug] [2026-02-21T09:09:57.188Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/b2252e3d5474fb4420a65851fae7e977f8706c1522901f09ce794b14026f5615 [stream]
+[debug] [2026-02-21T09:09:57.189Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/40bfd9af3733d6e2ec0525cbc5c84216718e64fe02a0d2fd57c147de0cee88d2 [none]
+[debug] [2026-02-21T09:09:57.189Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/40bfd9af3733d6e2ec0525cbc5c84216718e64fe02a0d2fd57c147de0cee88d2 [stream]
+[debug] [2026-02-21T09:09:57.191Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/322257eeaaf384b36e87acc3fbba28ddb87385a0c12ca066a47cbd8866769ef5 [none]
+[debug] [2026-02-21T09:09:57.191Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/322257eeaaf384b36e87acc3fbba28ddb87385a0c12ca066a47cbd8866769ef5 [stream]
+[debug] [2026-02-21T09:09:57.192Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/50e84264feff7a2b38ae12b233f1eda82b84cf1ec33fbea725ba6bf189f35f11 [none]
+[debug] [2026-02-21T09:09:57.192Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/50e84264feff7a2b38ae12b233f1eda82b84cf1ec33fbea725ba6bf189f35f11 [stream]
+[debug] [2026-02-21T09:09:57.193Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/a34a288627983bdde5a8e2c0bcb2997ea9fdb04351f3e388514da55aeda645f5 [none]
+[debug] [2026-02-21T09:09:57.193Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/a34a288627983bdde5a8e2c0bcb2997ea9fdb04351f3e388514da55aeda645f5 [stream]
+[debug] [2026-02-21T09:09:57.194Z] [hosting][populate queue][FINAL] {"max":978,"min":978,"avg":978,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":984}
+[debug] [2026-02-21T09:09:57.194Z] [hosting] uploads queued: 5
+[info] i  hosting: uploading new files [0/5] (0%) 
+[debug] [2026-02-21T09:09:58.408Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/b2252e3d5474fb4420a65851fae7e977f8706c1522901f09ce794b14026f5615 200
+[debug] [2026-02-21T09:09:58.408Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/b2252e3d5474fb4420a65851fae7e977f8706c1522901f09ce794b14026f5615 [stream]
+[debug] [2026-02-21T09:09:58.462Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/a34a288627983bdde5a8e2c0bcb2997ea9fdb04351f3e388514da55aeda645f5 200
+[debug] [2026-02-21T09:09:58.462Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/a34a288627983bdde5a8e2c0bcb2997ea9fdb04351f3e388514da55aeda645f5 [stream]
+[debug] [2026-02-21T09:09:58.463Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/322257eeaaf384b36e87acc3fbba28ddb87385a0c12ca066a47cbd8866769ef5 200
+[debug] [2026-02-21T09:09:58.463Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/322257eeaaf384b36e87acc3fbba28ddb87385a0c12ca066a47cbd8866769ef5 [stream]
+[debug] [2026-02-21T09:09:58.566Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/50e84264feff7a2b38ae12b233f1eda82b84cf1ec33fbea725ba6bf189f35f11 200
+[debug] [2026-02-21T09:09:58.566Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/50e84264feff7a2b38ae12b233f1eda82b84cf1ec33fbea725ba6bf189f35f11 [stream]
+[debug] [2026-02-21T09:09:58.619Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/40bfd9af3733d6e2ec0525cbc5c84216718e64fe02a0d2fd57c147de0cee88d2 200
+[debug] [2026-02-21T09:09:58.620Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/8d7e4535a79d78db/files/40bfd9af3733d6e2ec0525cbc5c84216718e64fe02a0d2fd57c147de0cee88d2 [stream]
+[debug] [2026-02-21T09:09:58.620Z] [hosting][upload queue][FINAL] {"max":1433,"min":1222,"avg":1316.8,"active":0,"complete":5,"success":5,"errored":0,"retried":0,"total":5,"elapsed":1434}
+[info] i  hosting: upload complete 
+[info] +  hosting[lotto-td]: file upload complete 
+[debug] [2026-02-21T09:09:58.620Z] [hosting] deploy completed after 2433ms
+[debug] [2026-02-21T09:09:58.620Z] [
+  {
+    "config": {
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "site": "lotto-td"
+    },
+    "version": "projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db"
+  }
+]
+[info] i  hosting[lotto-td]: finalizing version... 
+[debug] [2026-02-21T09:09:58.622Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:58.622Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:58.622Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/8d7e4535a79d78db updateMask=status%2Cconfig
+[debug] [2026-02-21T09:09:58.622Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/8d7e4535a79d78db {"status":"FINALIZED","config":{}}
+[debug] [2026-02-21T09:09:59.346Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/8d7e4535a79d78db 200
+[debug] [2026-02-21T09:09:59.346Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/8d7e4535a79d78db {"name":"projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T09:09:52.073622Z","createUser":{"email":"redcat683@gmail.com"},"finalizeTime":"2026-02-21T09:09:55.744112Z","finalizeUser":{"email":"redcat683@gmail.com"}}
+[debug] [2026-02-21T09:09:59.346Z] [hosting] finalized version for lotto-td:[object Object]
+[info] +  hosting[lotto-td]: version finalized 
+[info] i  hosting[lotto-td]: releasing new version... 
+[debug] [2026-02-21T09:09:59.347Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:59.347Z] Checked if tokens are valid: true, expires at: 1771668593250
+[debug] [2026-02-21T09:09:59.347Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases versionName=projects%2F648056845360%2Fsites%2Flotto-td%2Fversions%2F8d7e4535a79d78db
+[debug] [2026-02-21T09:09:59.347Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {}
+[debug] [2026-02-21T09:10:00.089Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases 200
+[debug] [2026-02-21T09:10:00.089Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771664995818000","version":{"name":"projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T09:09:52.073622Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T09:09:55.744112Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T09:09:55.818Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[debug] [2026-02-21T09:10:00.089Z] [hosting] release: {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771664995818000","version":{"name":"projects/648056845360/sites/lotto-td/versions/8d7e4535a79d78db","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T09:09:52.073622Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T09:09:55.744112Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T09:09:55.818Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[info] +  hosting[lotto-td]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/lotto-td/overview
+[info] Hosting URL: https://lotto-td.web.app
+[debug] [2026-02-21T10:41:49.568Z] ----------------------------------------------------------------------
+[debug] [2026-02-21T10:41:49.570Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\redca\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting --debug
+[debug] [2026-02-21T10:41:49.570Z] CLI Version:   15.6.0
+[debug] [2026-02-21T10:41:49.570Z] Platform:      win32
+[debug] [2026-02-21T10:41:49.571Z] Node Version:  v22.18.0
+[debug] [2026-02-21T10:41:49.571Z] Time:          Sat Feb 21 2026 19:41:49 GMT+0900 (대한민국 표준시)
+[debug] [2026-02-21T10:41:49.571Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-21T10:41:51.030Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-21T10:41:51.030Z] > authorizing via signed-in user (redcat683@gmail.com)
+[debug] [2026-02-21T10:41:51.031Z] [iam] checking project lotto-td for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-21T10:41:51.032Z] Checked if tokens are valid: false, expires at: 1771668593250
+[debug] [2026-02-21T10:41:51.032Z] Checked if tokens are valid: false, expires at: 1771668593250
+[debug] [2026-02-21T10:41:51.032Z] > refreshing access token with scopes: []
+[debug] [2026-02-21T10:41:51.033Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-21T10:41:51.033Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T10:41:51.236Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-21T10:41:51.236Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T10:41:51.244Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions [none]
+[debug] [2026-02-21T10:41:51.244Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions  x-goog-user-project=lotto-td
+[debug] [2026-02-21T10:41:51.244Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T10:41:51.485Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions 200
+[debug] [2026-02-21T10:41:51.485Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T10:41:51.486Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:51.486Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:51.486Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td [none]
+[debug] [2026-02-21T10:41:51.882Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td 200
+[debug] [2026-02-21T10:41:51.883Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td {"projectId":"lotto-td","projectNumber":"648056845360","displayName":"lotto-td","name":"projects/lotto-td","resources":{"hostingSite":"lotto-td"},"state":"ACTIVE","etag":"1_269bb2ce-596d-47ce-bef1-c573a5614cb2"}
+[info] 
+[info] === Deploying to 'lotto-td'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-21T10:41:51.887Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:51.887Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:51.888Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions [none]
+[debug] [2026-02-21T10:41:51.888Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-02-21T10:41:53.179Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions 200
+[debug] [2026-02-21T10:41:53.179Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"name":"projects/648056845360/sites/lotto-td/versions/2046c368a250636e","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[lotto-td]: beginning deploy... 
+[info] i  hosting[lotto-td]: found 8 files in public 
+[debug] [2026-02-21T10:41:53.188Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-21T10:41:53.201Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.201Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.201Z] [hosting] hash cache [cHVibGlj] stored for 8 files
+[debug] [2026-02-21T10:41:53.202Z] [hosting][hash queue][FINAL] {"max":9,"min":0,"avg":2.875,"active":0,"complete":8,"success":8,"errored":0,"retried":0,"total":8,"elapsed":13}
+[debug] [2026-02-21T10:41:53.202Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/2046c368a250636e:populateFiles [none]
+[debug] [2026-02-21T10:41:53.202Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/2046c368a250636e:populateFiles {"files":{"/style.css":"a34a288627983bdde5a8e2c0bcb2997ea9fdb04351f3e388514da55aeda645f5","/skills.js":"4ea88fbc74c73730774e67092076b6fb21e0568e80f7ab07b0b0db834ec2de8e","/economy.js":"d1c368ba4deffea3826284c8eb2c0a0712e348089324e5bff02649b7ffdd8f3c","/main.js":"fa5b29cfa8fee226380a7536ba93d29420a0506f77e493230f7d9118e8bb6900","/index.html":"efb0a92adbf631e9f10b0743fbe3cccda01b33611bdf7020be6f84d34714f99c","/enemies.js":"0159ca96d963eb40fa6ff49faf96b7601f9b70014ec1e59044ce1b7c9b8d2aaf","/units.js":"3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936","/engine.js":"ab8fb21011d75c5abdc833961de597dda587de0f37f0ca7f113a563b13a5f35a"}}
+[debug] [2026-02-21T10:41:53.943Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/2046c368a250636e:populateFiles 200
+[debug] [2026-02-21T10:41:53.943Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/2046c368a250636e:populateFiles {"uploadRequiredHashes":["fa5b29cfa8fee226380a7536ba93d29420a0506f77e493230f7d9118e8bb6900","efb0a92adbf631e9f10b0743fbe3cccda01b33611bdf7020be6f84d34714f99c","0159ca96d963eb40fa6ff49faf96b7601f9b70014ec1e59044ce1b7c9b8d2aaf","3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936","ab8fb21011d75c5abdc833961de597dda587de0f37f0ca7f113a563b13a5f35a"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files"}
+[debug] [2026-02-21T10:41:53.944Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.944Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.945Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.945Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.945Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.945Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.945Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.945Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.946Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.946Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:53.946Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/fa5b29cfa8fee226380a7536ba93d29420a0506f77e493230f7d9118e8bb6900 [none]
+[debug] [2026-02-21T10:41:53.946Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/fa5b29cfa8fee226380a7536ba93d29420a0506f77e493230f7d9118e8bb6900 [stream]
+[debug] [2026-02-21T10:41:53.947Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/efb0a92adbf631e9f10b0743fbe3cccda01b33611bdf7020be6f84d34714f99c [none]
+[debug] [2026-02-21T10:41:53.947Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/efb0a92adbf631e9f10b0743fbe3cccda01b33611bdf7020be6f84d34714f99c [stream]
+[debug] [2026-02-21T10:41:53.948Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/0159ca96d963eb40fa6ff49faf96b7601f9b70014ec1e59044ce1b7c9b8d2aaf [none]
+[debug] [2026-02-21T10:41:53.948Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/0159ca96d963eb40fa6ff49faf96b7601f9b70014ec1e59044ce1b7c9b8d2aaf [stream]
+[debug] [2026-02-21T10:41:53.949Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936 [none]
+[debug] [2026-02-21T10:41:53.949Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936 [stream]
+[debug] [2026-02-21T10:41:53.950Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/ab8fb21011d75c5abdc833961de597dda587de0f37f0ca7f113a563b13a5f35a [none]
+[debug] [2026-02-21T10:41:53.950Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/ab8fb21011d75c5abdc833961de597dda587de0f37f0ca7f113a563b13a5f35a [stream]
+[debug] [2026-02-21T10:41:53.951Z] [hosting][populate queue][FINAL] {"max":745,"min":745,"avg":745,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":751}
+[debug] [2026-02-21T10:41:53.951Z] [hosting] uploads queued: 5
+[debug] [2026-02-21T10:41:54.921Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/efb0a92adbf631e9f10b0743fbe3cccda01b33611bdf7020be6f84d34714f99c 200
+[debug] [2026-02-21T10:41:54.922Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/efb0a92adbf631e9f10b0743fbe3cccda01b33611bdf7020be6f84d34714f99c [stream]
+[debug] [2026-02-21T10:41:55.132Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/0159ca96d963eb40fa6ff49faf96b7601f9b70014ec1e59044ce1b7c9b8d2aaf 200
+[debug] [2026-02-21T10:41:55.132Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/0159ca96d963eb40fa6ff49faf96b7601f9b70014ec1e59044ce1b7c9b8d2aaf [stream]
+[debug] [2026-02-21T10:41:55.193Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/fa5b29cfa8fee226380a7536ba93d29420a0506f77e493230f7d9118e8bb6900 200
+[debug] [2026-02-21T10:41:55.194Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/fa5b29cfa8fee226380a7536ba93d29420a0506f77e493230f7d9118e8bb6900 [stream]
+[info] i  hosting: uploading new files [3/5] (60%) 
+[debug] [2026-02-21T10:41:55.201Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/ab8fb21011d75c5abdc833961de597dda587de0f37f0ca7f113a563b13a5f35a 200
+[debug] [2026-02-21T10:41:55.201Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/ab8fb21011d75c5abdc833961de597dda587de0f37f0ca7f113a563b13a5f35a [stream]
+[debug] [2026-02-21T10:41:55.294Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936 200
+[debug] [2026-02-21T10:41:55.294Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/2046c368a250636e/files/3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936 [stream]
+[debug] [2026-02-21T10:41:55.294Z] [hosting][upload queue][FINAL] {"max":1349,"min":977,"avg":1203.6,"active":0,"complete":5,"success":5,"errored":0,"retried":0,"total":5,"elapsed":1350}
+[info] i  hosting: upload complete 
+[info] +  hosting[lotto-td]: file upload complete 
+[debug] [2026-02-21T10:41:55.295Z] [hosting] deploy completed after 2114ms
+[debug] [2026-02-21T10:41:55.295Z] [
+  {
+    "config": {
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "site": "lotto-td"
+    },
+    "version": "projects/648056845360/sites/lotto-td/versions/2046c368a250636e"
+  }
+]
+[info] i  hosting[lotto-td]: finalizing version... 
+[debug] [2026-02-21T10:41:55.296Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:55.296Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:55.296Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/2046c368a250636e updateMask=status%2Cconfig
+[debug] [2026-02-21T10:41:55.296Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/2046c368a250636e {"status":"FINALIZED","config":{}}
+[debug] [2026-02-21T10:41:55.966Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/2046c368a250636e 200
+[debug] [2026-02-21T10:41:55.966Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/2046c368a250636e {"name":"projects/648056845360/sites/lotto-td/versions/2046c368a250636e","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T10:41:49.198179Z","createUser":{"email":"redcat683@gmail.com"},"finalizeTime":"2026-02-21T10:41:52.457714Z","finalizeUser":{"email":"redcat683@gmail.com"}}
+[debug] [2026-02-21T10:41:55.966Z] [hosting] finalized version for lotto-td:[object Object]
+[info] +  hosting[lotto-td]: version finalized 
+[info] i  hosting[lotto-td]: releasing new version... 
+[debug] [2026-02-21T10:41:55.967Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:55.967Z] Checked if tokens are valid: true, expires at: 1771674110236
+[debug] [2026-02-21T10:41:55.967Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases versionName=projects%2F648056845360%2Fsites%2Flotto-td%2Fversions%2F2046c368a250636e
+[debug] [2026-02-21T10:41:55.967Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {}
+[debug] [2026-02-21T10:41:56.745Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases 200
+[debug] [2026-02-21T10:41:56.745Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771670512589000","version":{"name":"projects/648056845360/sites/lotto-td/versions/2046c368a250636e","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T10:41:49.198179Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T10:41:52.457714Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T10:41:52.589Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[debug] [2026-02-21T10:41:56.746Z] [hosting] release: {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771670512589000","version":{"name":"projects/648056845360/sites/lotto-td/versions/2046c368a250636e","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T10:41:49.198179Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T10:41:52.457714Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T10:41:52.589Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[info] +  hosting[lotto-td]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/lotto-td/overview
+[info] Hosting URL: https://lotto-td.web.app
+[debug] [2026-02-21T11:29:25.959Z] ----------------------------------------------------------------------
+[debug] [2026-02-21T11:29:25.961Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\redca\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting --debug
+[debug] [2026-02-21T11:29:25.961Z] CLI Version:   15.6.0
+[debug] [2026-02-21T11:29:25.961Z] Platform:      win32
+[debug] [2026-02-21T11:29:25.961Z] Node Version:  v22.18.0
+[debug] [2026-02-21T11:29:25.962Z] Time:          Sat Feb 21 2026 20:29:25 GMT+0900 (대한민국 표준시)
+[debug] [2026-02-21T11:29:25.962Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-21T11:29:27.300Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-21T11:29:27.301Z] > authorizing via signed-in user (redcat683@gmail.com)
+[debug] [2026-02-21T11:29:27.302Z] [iam] checking project lotto-td for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-21T11:29:27.302Z] Checked if tokens are valid: false, expires at: 1771674110236
+[debug] [2026-02-21T11:29:27.303Z] Checked if tokens are valid: false, expires at: 1771674110236
+[debug] [2026-02-21T11:29:27.303Z] > refreshing access token with scopes: []
+[debug] [2026-02-21T11:29:27.304Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-21T11:29:27.304Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T11:29:27.529Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-21T11:29:27.529Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-21T11:29:27.537Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions [none]
+[debug] [2026-02-21T11:29:27.537Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions  x-goog-user-project=lotto-td
+[debug] [2026-02-21T11:29:27.537Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T11:29:27.745Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions 200
+[debug] [2026-02-21T11:29:27.745Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-21T11:29:27.746Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:27.746Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:27.746Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td [none]
+[debug] [2026-02-21T11:29:28.152Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td 200
+[debug] [2026-02-21T11:29:28.153Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td {"projectId":"lotto-td","projectNumber":"648056845360","displayName":"lotto-td","name":"projects/lotto-td","resources":{"hostingSite":"lotto-td"},"state":"ACTIVE","etag":"1_269bb2ce-596d-47ce-bef1-c573a5614cb2"}
+[info] 
+[info] === Deploying to 'lotto-td'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-21T11:29:28.156Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:28.156Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:28.157Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions [none]
+[debug] [2026-02-21T11:29:28.157Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-02-21T11:29:29.597Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions 200
+[debug] [2026-02-21T11:29:29.598Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"name":"projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[lotto-td]: beginning deploy... 
+[info] i  hosting[lotto-td]: found 9 files in public 
+[debug] [2026-02-21T11:29:29.607Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-21T11:29:29.620Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:29.620Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:29.621Z] [hosting] hash cache [cHVibGlj] stored for 9 files
+[debug] [2026-02-21T11:29:29.621Z] [hosting][hash queue][FINAL] {"max":10,"min":1,"avg":3.7777777777777777,"active":0,"complete":9,"success":9,"errored":0,"retried":0,"total":9,"elapsed":13}
+[debug] [2026-02-21T11:29:29.621Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6:populateFiles [none]
+[debug] [2026-02-21T11:29:29.621Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6:populateFiles {"files":{"/units.js":"3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936","/enemies.js":"0159ca96d963eb40fa6ff49faf96b7601f9b70014ec1e59044ce1b7c9b8d2aaf","/economy.js":"d1c368ba4deffea3826284c8eb2c0a0712e348089324e5bff02649b7ffdd8f3c","/main.js":"2030e934562c4cf3d3f9c45a5f11d1bf63f9e25877914673e2d1eb7fc4a08917","/style.css":"d6fb6f4046e578bf4d0db0c0e666adc740daa77b7fe42a59f006596515996d6d","/favicon.ico":"8d1d4134cf191bd20aa30feb5d529fb941658a6f71ec88ef21fcd153119f225a","/skills.js":"b89641cc713acdbdc7f89d08e22dafbf720575026712e4a79635dec3b57f05b8","/index.html":"ff32e12b4423ee4185b3684a439dfec84a65f9cd8bffe64638c0683dceb6dfdf","/engine.js":"5af5d2ceb5ca42fde8c096c32b3aef217ee09edb9fa083ac344a0dc37083b726"}}
+[debug] [2026-02-21T11:29:30.193Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6:populateFiles 200
+[debug] [2026-02-21T11:29:30.193Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6:populateFiles {"uploadRequiredHashes":["ff32e12b4423ee4185b3684a439dfec84a65f9cd8bffe64638c0683dceb6dfdf","5af5d2ceb5ca42fde8c096c32b3aef217ee09edb9fa083ac344a0dc37083b726","d6fb6f4046e578bf4d0db0c0e666adc740daa77b7fe42a59f006596515996d6d","2030e934562c4cf3d3f9c45a5f11d1bf63f9e25877914673e2d1eb7fc4a08917","b89641cc713acdbdc7f89d08e22dafbf720575026712e4a79635dec3b57f05b8","8d1d4134cf191bd20aa30feb5d529fb941658a6f71ec88ef21fcd153119f225a"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files"}
+[debug] [2026-02-21T11:29:30.194Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.194Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.194Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.194Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.195Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:30.196Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/ff32e12b4423ee4185b3684a439dfec84a65f9cd8bffe64638c0683dceb6dfdf [none]
+[debug] [2026-02-21T11:29:30.196Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/ff32e12b4423ee4185b3684a439dfec84a65f9cd8bffe64638c0683dceb6dfdf [stream]
+[debug] [2026-02-21T11:29:30.197Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/5af5d2ceb5ca42fde8c096c32b3aef217ee09edb9fa083ac344a0dc37083b726 [none]
+[debug] [2026-02-21T11:29:30.197Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/5af5d2ceb5ca42fde8c096c32b3aef217ee09edb9fa083ac344a0dc37083b726 [stream]
+[debug] [2026-02-21T11:29:30.198Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/d6fb6f4046e578bf4d0db0c0e666adc740daa77b7fe42a59f006596515996d6d [none]
+[debug] [2026-02-21T11:29:30.198Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/d6fb6f4046e578bf4d0db0c0e666adc740daa77b7fe42a59f006596515996d6d [stream]
+[debug] [2026-02-21T11:29:30.198Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/2030e934562c4cf3d3f9c45a5f11d1bf63f9e25877914673e2d1eb7fc4a08917 [none]
+[debug] [2026-02-21T11:29:30.199Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/2030e934562c4cf3d3f9c45a5f11d1bf63f9e25877914673e2d1eb7fc4a08917 [stream]
+[debug] [2026-02-21T11:29:30.200Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/b89641cc713acdbdc7f89d08e22dafbf720575026712e4a79635dec3b57f05b8 [none]
+[debug] [2026-02-21T11:29:30.200Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/b89641cc713acdbdc7f89d08e22dafbf720575026712e4a79635dec3b57f05b8 [stream]
+[debug] [2026-02-21T11:29:30.200Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/8d1d4134cf191bd20aa30feb5d529fb941658a6f71ec88ef21fcd153119f225a [none]
+[debug] [2026-02-21T11:29:30.201Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/8d1d4134cf191bd20aa30feb5d529fb941658a6f71ec88ef21fcd153119f225a [stream]
+[debug] [2026-02-21T11:29:30.201Z] [hosting][populate queue][FINAL] {"max":576,"min":576,"avg":576,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":581}
+[debug] [2026-02-21T11:29:30.201Z] [hosting] uploads queued: 6
+[debug] [2026-02-21T11:29:31.317Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/b89641cc713acdbdc7f89d08e22dafbf720575026712e4a79635dec3b57f05b8 200
+[debug] [2026-02-21T11:29:31.317Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/b89641cc713acdbdc7f89d08e22dafbf720575026712e4a79635dec3b57f05b8 [stream]
+[debug] [2026-02-21T11:29:31.434Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/2030e934562c4cf3d3f9c45a5f11d1bf63f9e25877914673e2d1eb7fc4a08917 200
+[debug] [2026-02-21T11:29:31.434Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/2030e934562c4cf3d3f9c45a5f11d1bf63f9e25877914673e2d1eb7fc4a08917 [stream]
+[debug] [2026-02-21T11:29:31.444Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/d6fb6f4046e578bf4d0db0c0e666adc740daa77b7fe42a59f006596515996d6d 200
+[debug] [2026-02-21T11:29:31.445Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/d6fb6f4046e578bf4d0db0c0e666adc740daa77b7fe42a59f006596515996d6d [stream]
+[debug] [2026-02-21T11:29:31.487Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/8d1d4134cf191bd20aa30feb5d529fb941658a6f71ec88ef21fcd153119f225a 200
+[debug] [2026-02-21T11:29:31.487Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/8d1d4134cf191bd20aa30feb5d529fb941658a6f71ec88ef21fcd153119f225a [stream]
+[debug] [2026-02-21T11:29:31.580Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/5af5d2ceb5ca42fde8c096c32b3aef217ee09edb9fa083ac344a0dc37083b726 200
+[debug] [2026-02-21T11:29:31.581Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/5af5d2ceb5ca42fde8c096c32b3aef217ee09edb9fa083ac344a0dc37083b726 [stream]
+[info] i  hosting: uploading new files [5/6] (83%) 
+[debug] [2026-02-21T11:29:31.782Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/ff32e12b4423ee4185b3684a439dfec84a65f9cd8bffe64638c0683dceb6dfdf 200
+[debug] [2026-02-21T11:29:31.782Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/a3cac9b6458df9c6/files/ff32e12b4423ee4185b3684a439dfec84a65f9cd8bffe64638c0683dceb6dfdf [stream]
+[debug] [2026-02-21T11:29:31.783Z] [hosting][upload queue][FINAL] {"max":1588,"min":1122,"avg":1313.3333333333333,"active":0,"complete":6,"success":6,"errored":0,"retried":0,"total":6,"elapsed":1589}
+[info] i  hosting: upload complete 
+[info] +  hosting[lotto-td]: file upload complete 
+[debug] [2026-02-21T11:29:31.783Z] [hosting] deploy completed after 2184ms
+[debug] [2026-02-21T11:29:31.783Z] [
+  {
+    "config": {
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "site": "lotto-td"
+    },
+    "version": "projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6"
+  }
+]
+[info] i  hosting[lotto-td]: finalizing version... 
+[debug] [2026-02-21T11:29:31.784Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:31.785Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:31.785Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/a3cac9b6458df9c6 updateMask=status%2Cconfig
+[debug] [2026-02-21T11:29:31.785Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/a3cac9b6458df9c6 {"status":"FINALIZED","config":{}}
+[debug] [2026-02-21T11:29:32.658Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/a3cac9b6458df9c6 200
+[debug] [2026-02-21T11:29:32.658Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/a3cac9b6458df9c6 {"name":"projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T11:29:25.656010Z","createUser":{"email":"redcat683@gmail.com"},"finalizeTime":"2026-02-21T11:29:29.182989Z","finalizeUser":{"email":"redcat683@gmail.com"}}
+[debug] [2026-02-21T11:29:32.659Z] [hosting] finalized version for lotto-td:[object Object]
+[info] +  hosting[lotto-td]: version finalized 
+[info] i  hosting[lotto-td]: releasing new version... 
+[debug] [2026-02-21T11:29:32.659Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:32.659Z] Checked if tokens are valid: true, expires at: 1771676966529
+[debug] [2026-02-21T11:29:32.659Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases versionName=projects%2F648056845360%2Fsites%2Flotto-td%2Fversions%2Fa3cac9b6458df9c6
+[debug] [2026-02-21T11:29:32.660Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {}
+[debug] [2026-02-21T11:29:33.608Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases 200
+[debug] [2026-02-21T11:29:33.608Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771673369503000","version":{"name":"projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T11:29:25.656010Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T11:29:29.182989Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T11:29:29.503Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[debug] [2026-02-21T11:29:33.609Z] [hosting] release: {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1771673369503000","version":{"name":"projects/648056845360/sites/lotto-td/versions/a3cac9b6458df9c6","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-21T11:29:25.656010Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-02-21T11:29:29.182989Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-02-21T11:29:29.503Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[info] +  hosting[lotto-td]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/lotto-td/overview
+[info] Hosting URL: https://lotto-td.web.app
+[debug] [2026-03-04T13:46:06.433Z] ----------------------------------------------------------------------
+[debug] [2026-03-04T13:46:06.435Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\redca\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting --debug
+[debug] [2026-03-04T13:46:06.436Z] CLI Version:   15.6.0
+[debug] [2026-03-04T13:46:06.436Z] Platform:      win32
+[debug] [2026-03-04T13:46:06.436Z] Node Version:  v22.18.0
+[debug] [2026-03-04T13:46:06.436Z] Time:          Wed Mar 04 2026 22:46:06 GMT+0900 (대한민국 표준시)
+[debug] [2026-03-04T13:46:06.436Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-04T13:46:06.438Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-03-04T13:46:08.886Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-04T13:46:08.887Z] > authorizing via signed-in user (redcat683@gmail.com)
+[debug] [2026-03-04T13:46:08.887Z] [iam] checking project lotto-td for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-04T13:46:08.888Z] Checked if tokens are valid: false, expires at: 1771676966529
+[debug] [2026-03-04T13:46:08.888Z] Checked if tokens are valid: false, expires at: 1771676966529
+[debug] [2026-03-04T13:46:08.888Z] > refreshing access token with scopes: []
+[debug] [2026-03-04T13:46:08.889Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-04T13:46:08.889Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-04T13:46:09.078Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-04T13:46:09.078Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-04T13:46:09.087Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions [none]
+[debug] [2026-03-04T13:46:09.087Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions  x-goog-user-project=lotto-td
+[debug] [2026-03-04T13:46:09.087Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-04T13:46:09.274Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-03-04T13:46:09.274Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-03-04T13:46:09.321Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions 200
+[debug] [2026-03-04T13:46:09.321Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lotto-td:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-04T13:46:09.322Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:09.322Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:09.322Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td [none]
+[debug] [2026-03-04T13:46:09.738Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td 200
+[debug] [2026-03-04T13:46:09.738Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/lotto-td {"projectId":"lotto-td","projectNumber":"648056845360","displayName":"lotto-td","name":"projects/lotto-td","resources":{"hostingSite":"lotto-td"},"state":"ACTIVE","etag":"1_269bb2ce-596d-47ce-bef1-c573a5614cb2"}
+[info] 
+[info] === Deploying to 'lotto-td'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-03-04T13:46:09.743Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:09.743Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:09.743Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions [none]
+[debug] [2026-03-04T13:46:09.743Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-03-04T13:46:10.979Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions 200
+[debug] [2026-03-04T13:46:10.979Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions {"name":"projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[lotto-td]: beginning deploy... 
+[info] i  hosting[lotto-td]: found 9 files in public 
+[debug] [2026-03-04T13:46:10.989Z] [hosting] uploading with 200 concurrency
+[debug] [2026-03-04T13:46:10.999Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:10.999Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.000Z] [hosting] hash cache [cHVibGlj] stored for 9 files
+[debug] [2026-03-04T13:46:11.000Z] [hosting][hash queue][FINAL] {"max":7,"min":0,"avg":2.3333333333333335,"active":0,"complete":9,"success":9,"errored":0,"retried":0,"total":9,"elapsed":10}
+[debug] [2026-03-04T13:46:11.000Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9:populateFiles [none]
+[debug] [2026-03-04T13:46:11.000Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9:populateFiles {"files":{"/units.js":"3eb3cd22307254ed4660911b0e9124947a30dbeeff51c8a13767fb0ee951c936","/skills.js":"b89641cc713acdbdc7f89d08e22dafbf720575026712e4a79635dec3b57f05b8","/favicon.ico":"8d1d4134cf191bd20aa30feb5d529fb941658a6f71ec88ef21fcd153119f225a","/economy.js":"d1c368ba4deffea3826284c8eb2c0a0712e348089324e5bff02649b7ffdd8f3c","/main.js":"42aab6aaa98a5b722fcc9c7fc409f85db5bc4575bc9160c26ccbc8409e168010","/index.html":"ba2bb8438c084ddeef10aac39100a337eb8fa616844cee96fcf2f52116eec339","/style.css":"0272e1d6605dbb305646dc3cbc3eb1cc5f8ff92abc0ef7de756d173d3d578db0","/enemies.js":"c39556afcc0047a36fef0b711af29d610ed0997aebc7cab161c55de6ea8ef700","/engine.js":"0a6ed387268f0d59e50283d80ab8b31cf9c85afd4568eb60ce9dd07cc5d4ea6e"}}
+[debug] [2026-03-04T13:46:11.712Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9:populateFiles 200
+[debug] [2026-03-04T13:46:11.713Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9:populateFiles {"uploadRequiredHashes":["0a6ed387268f0d59e50283d80ab8b31cf9c85afd4568eb60ce9dd07cc5d4ea6e","ba2bb8438c084ddeef10aac39100a337eb8fa616844cee96fcf2f52116eec339","0272e1d6605dbb305646dc3cbc3eb1cc5f8ff92abc0ef7de756d173d3d578db0","c39556afcc0047a36fef0b711af29d610ed0997aebc7cab161c55de6ea8ef700","42aab6aaa98a5b722fcc9c7fc409f85db5bc4575bc9160c26ccbc8409e168010"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files"}
+[debug] [2026-03-04T13:46:11.713Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.713Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.713Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:11.714Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0a6ed387268f0d59e50283d80ab8b31cf9c85afd4568eb60ce9dd07cc5d4ea6e [none]
+[debug] [2026-03-04T13:46:11.715Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0a6ed387268f0d59e50283d80ab8b31cf9c85afd4568eb60ce9dd07cc5d4ea6e [stream]
+[debug] [2026-03-04T13:46:11.715Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/ba2bb8438c084ddeef10aac39100a337eb8fa616844cee96fcf2f52116eec339 [none]
+[debug] [2026-03-04T13:46:11.716Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/ba2bb8438c084ddeef10aac39100a337eb8fa616844cee96fcf2f52116eec339 [stream]
+[debug] [2026-03-04T13:46:11.716Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0272e1d6605dbb305646dc3cbc3eb1cc5f8ff92abc0ef7de756d173d3d578db0 [none]
+[debug] [2026-03-04T13:46:11.716Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0272e1d6605dbb305646dc3cbc3eb1cc5f8ff92abc0ef7de756d173d3d578db0 [stream]
+[debug] [2026-03-04T13:46:11.718Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/c39556afcc0047a36fef0b711af29d610ed0997aebc7cab161c55de6ea8ef700 [none]
+[debug] [2026-03-04T13:46:11.718Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/c39556afcc0047a36fef0b711af29d610ed0997aebc7cab161c55de6ea8ef700 [stream]
+[debug] [2026-03-04T13:46:11.718Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/42aab6aaa98a5b722fcc9c7fc409f85db5bc4575bc9160c26ccbc8409e168010 [none]
+[debug] [2026-03-04T13:46:11.718Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/42aab6aaa98a5b722fcc9c7fc409f85db5bc4575bc9160c26ccbc8409e168010 [stream]
+[debug] [2026-03-04T13:46:11.719Z] [hosting][populate queue][FINAL] {"max":715,"min":715,"avg":715,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":720}
+[debug] [2026-03-04T13:46:11.719Z] [hosting] uploads queued: 5
+[debug] [2026-03-04T13:46:12.670Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0a6ed387268f0d59e50283d80ab8b31cf9c85afd4568eb60ce9dd07cc5d4ea6e 200
+[debug] [2026-03-04T13:46:12.670Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0a6ed387268f0d59e50283d80ab8b31cf9c85afd4568eb60ce9dd07cc5d4ea6e [stream]
+[debug] [2026-03-04T13:46:12.767Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0272e1d6605dbb305646dc3cbc3eb1cc5f8ff92abc0ef7de756d173d3d578db0 200
+[debug] [2026-03-04T13:46:12.767Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/0272e1d6605dbb305646dc3cbc3eb1cc5f8ff92abc0ef7de756d173d3d578db0 [stream]
+[debug] [2026-03-04T13:46:12.854Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/ba2bb8438c084ddeef10aac39100a337eb8fa616844cee96fcf2f52116eec339 200
+[debug] [2026-03-04T13:46:12.854Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/ba2bb8438c084ddeef10aac39100a337eb8fa616844cee96fcf2f52116eec339 [stream]
+[debug] [2026-03-04T13:46:12.884Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/c39556afcc0047a36fef0b711af29d610ed0997aebc7cab161c55de6ea8ef700 200
+[debug] [2026-03-04T13:46:12.884Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/c39556afcc0047a36fef0b711af29d610ed0997aebc7cab161c55de6ea8ef700 [stream]
+[debug] [2026-03-04T13:46:12.907Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/42aab6aaa98a5b722fcc9c7fc409f85db5bc4575bc9160c26ccbc8409e168010 200
+[debug] [2026-03-04T13:46:12.908Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/lotto-td/versions/03f3bcda695416c9/files/42aab6aaa98a5b722fcc9c7fc409f85db5bc4575bc9160c26ccbc8409e168010 [stream]
+[debug] [2026-03-04T13:46:12.908Z] [hosting][upload queue][FINAL] {"max":1194,"min":958,"avg":1103.2,"active":0,"complete":5,"success":5,"errored":0,"retried":0,"total":5,"elapsed":1195}
+[info] i  hosting: upload complete 
+[info] +  hosting[lotto-td]: file upload complete 
+[debug] [2026-03-04T13:46:12.908Z] [hosting] deploy completed after 1927ms
+[debug] [2026-03-04T13:46:12.908Z] [
+  {
+    "config": {
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "site": "lotto-td"
+    },
+    "version": "projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9"
+  }
+]
+[info] i  hosting[lotto-td]: finalizing version... 
+[debug] [2026-03-04T13:46:12.909Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:12.909Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:12.910Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/03f3bcda695416c9 updateMask=status%2Cconfig
+[debug] [2026-03-04T13:46:12.910Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/03f3bcda695416c9 {"status":"FINALIZED","config":{}}
+[debug] [2026-03-04T13:46:13.537Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/03f3bcda695416c9 200
+[debug] [2026-03-04T13:46:13.537Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/versions/03f3bcda695416c9 {"name":"projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-04T13:46:05.631261Z","createUser":{"email":"redcat683@gmail.com"},"finalizeTime":"2026-03-04T13:46:08.659251Z","finalizeUser":{"email":"redcat683@gmail.com"}}
+[debug] [2026-03-04T13:46:13.537Z] [hosting] finalized version for lotto-td:[object Object]
+[info] +  hosting[lotto-td]: version finalized 
+[info] i  hosting[lotto-td]: releasing new version... 
+[debug] [2026-03-04T13:46:13.538Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:13.538Z] Checked if tokens are valid: true, expires at: 1772635568079
+[debug] [2026-03-04T13:46:13.538Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases versionName=projects%2F648056845360%2Fsites%2Flotto-td%2Fversions%2F03f3bcda695416c9
+[debug] [2026-03-04T13:46:13.538Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {}
+[debug] [2026-03-04T13:46:14.463Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases 200
+[debug] [2026-03-04T13:46:14.463Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/lotto-td/channels/live/releases {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1772631968918000","version":{"name":"projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-04T13:46:05.631261Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-03-04T13:46:08.659251Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-03-04T13:46:08.918Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[debug] [2026-03-04T13:46:14.463Z] [hosting] release: {"name":"projects/648056845360/sites/lotto-td/channels/live/releases/1772631968918000","version":{"name":"projects/648056845360/sites/lotto-td/versions/03f3bcda695416c9","status":"FINALIZED","config":{},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-04T13:46:05.631261Z","createUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"},"finalizeTime":"2026-03-04T13:46:08.659251Z","finalizeUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}},"type":"DEPLOY","releaseTime":"2026-03-04T13:46:08.918Z","releaseUser":{"email":"redcat683@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJAGba9UhJPeZ9iL6VQQQKvREy0b3nRDObTk_Nao2EwQUiGFz86hQ"}}
+[info] +  hosting[lotto-td]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/lotto-td/overview
+[info] Hosting URL: https://lotto-td.web.app

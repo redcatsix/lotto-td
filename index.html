@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lotto TD</title>
+  <link rel="icon" href="./favicon.ico" />
+  <link rel="stylesheet" href="./style.css?v=20260303_wave" />
+</head>
+<body>
+  <div id="app">
+    <div id="top-ui">
+      <div id="top-left">
+        <div class="pill"><b>Stage</b>: <span id="stage">1</span></div>
+        <div class="pill"><b>Core HP</b>: <span id="core-hp">20</span></div>
+
+        <div class="badge normal">일반: <span id="t-common">0</span></div>
+        <div class="badge magic">레어: <span id="t-rare">0</span></div>
+        <div class="badge legend">전설: <span id="t-legend">0</span></div>
+
+        <div id="xp-badge" class="badge xp clickable" title="스킬트리 열기">XP: <span id="acc-xp">0</span> · 스킬</div>
+
+        <!-- ✅ 웨이브 타입 예고 배지 -->
+        <div id="wave-type-indicator" class="wave-type-badge" style="display:none;">
+          <span id="wave-type-name" class="wave-type-name">일반</span>
+          <span id="wave-type-desc" class="wave-type-desc"></span>
+        </div>
+      </div>
+
+      <div id="top-right">
+        <button id="skill-btn" title="스킬트리">🌳 스킬</button>
+        <button id="help-btn" title="도움말">?</button>
+        <button id="speed-btn" title="배속">1x</button>
+        <button id="vfx-btn" title="이펙트">FX ON</button>
+        <button id="pause-btn" title="일시정지">⏸</button>
+      </div>
+    </div>
+
+    <div id="stage-area">
+      <canvas id="gameCanvas"></canvas>
+
+      <!-- Side Panel -->
+      <div id="side-ui">
+        <div id="shop-panel" class="side-card">
+          <div class="side-head">
+            <div class="side-title">상점</div>
+            <div class="small" style="opacity:0.8; margin-top:4px;">팝업 없음. 옆에서 바로 결제.</div>
+          </div>
+
+          <div class="side-section">
+            <div class="side-section-title">
+              <span>일반</span>
+              <span class="badge normal">x <span id="shop-common">0</span></span>
+            </div>
+            <div id="shop-common-items" class="side-items"></div>
+          </div>
+
+          <div class="side-section">
+            <div class="side-section-title">
+              <span>레어</span>
+              <span class="badge rare">x <span id="shop-rare">0</span></span>
+            </div>
+            <div id="shop-rare-items" class="side-items"></div>
+          </div>
+
+          <div class="side-section">
+            <div class="side-section-title">
+              <span>전설</span>
+              <span class="badge legend">x <span id="shop-legend">0</span></span>
+            </div>
+            <div id="shop-legend-items" class="side-items"></div>
+          </div>
+        </div>
+
+        <div id="dps-panel" class="side-card">
+          <div class="side-head">
+            <div class="side-title">실시간 DPS</div>
+            <div class="small" style="opacity:0.78; margin-top:4px;">최근 2초 기준 · Top 3</div>
+          </div>
+
+          <div class="dps-rows">
+            <div class="dps-row">
+              <div class="dps-row-head">
+                <span class="dps-rank">#1</span>
+                <span class="dps-name" id="dps-name-1">—</span>
+                <span class="dps-val" id="dps-val-1">0/s</span>
+              </div>
+              <div class="dps-bar"><div class="dps-bar-fill" id="dps-bar-1" style="width:0%"></div></div>
+            </div>
+            <div class="dps-row">
+              <div class="dps-row-head">
+                <span class="dps-rank">#2</span>
+                <span class="dps-name" id="dps-name-2">—</span>
+                <span class="dps-val" id="dps-val-2">0/s</span>
+              </div>
+              <div class="dps-bar"><div class="dps-bar-fill" id="dps-bar-2" style="width:0%"></div></div>
+            </div>
+            <div class="dps-row">
+              <div class="dps-row-head">
+                <span class="dps-rank">#3</span>
+                <span class="dps-name" id="dps-name-3">—</span>
+                <span class="dps-val" id="dps-val-3">0/s</span>
+              </div>
+              <div class="dps-bar"><div class="dps-bar-fill" id="dps-bar-3" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buy Menu -->
+  <div id="buy-menu" class="menu hidden">
+    <h4>타워 뽑기</h4>
+    <div class="row">
+      <button id="buy-draw">뽑기 (일반)</button>
+      <button id="buy-cancel">닫기</button>
+    </div>
+    <div class="hint">빈 칸을 클릭 → 뽑기.</div>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="tooltip-panel" class="menu hidden">
+    <div id="tt-title"></div>
+    <div id="tt-sub"></div>
+    <div id="tt-stats"></div>
+    <div id="tt-options"></div>
+    <div id="tt-actions">
+      <button id="mod-btn">개조</button>
+      <button id="awaken-btn">각성</button>
+      <button id="reroll-btn">리롤</button>
+      <button id="legend-reroll-btn">전설리롤</button>
+    </div>
+    <div class="hint" id="tt-hint"></div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="help-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Lotto TD 도움말</div>
+        <button id="help-close">닫기</button>
+      </div>
+      <div class="modal-body" id="help-body"></div>
+    </div>
+  </div>
+
+  <!-- Special Pick Modal -->
+  <div id="special-overlay" class="modal-overlay hidden">
+    <div class="modal special-modal">
+      <div class="modal-header">
+        <div class="modal-title">SPECIAL PICK</div>
+        <button id="special-random">랜덤</button>
+      </div>
+      <div class="modal-body">
+        <div class="special-desc">3장 중 1장 선택. 선택 중에는 게임이 잠깐 멈춥니다.</div>
+        <div id="special-cards" class="special-cards"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="gameover-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">GAME OVER</div>
+        <button id="gameover-skill-btn">스킬트리</button>
+        <button id="restart-btn">다시 시작</button>
+      </div>
+      <div class="modal-body" id="gameover-body">
+        <div class="small">코어가 파괴되었습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skill Tree Modal -->
+  <div id="skill-overlay" class="modal-overlay hidden">
+    <div class="modal skill-modal">
+      <div class="modal-header">
+        <div class="modal-title">SKILL TREE</div>
+        <div class="skill-xp"><b>XP</b>: <span id="skill-xp">0</span></div>
+        <button id="skill-close">닫기</button>
+      </div>
+      <div class="modal-body">
+        <div class="small" style="margin-bottom:10px;">런이 끝나면 XP를 얻습니다. 스킬로 다음 런을 강화하세요.</div>
+        <div class="skill-layout">
+          <div class="skill-tree-wrap" id="skill-tree-wrap">
+            <svg id="skill-lines" class="skill-lines"></svg>
+            <div id="skill-tree" class="skill-tree"></div>
+            <div id="skill-inline" class="skill-inline hidden"></div>
+          </div>
+          <div id="skill-detail" class="skill-detail">
+            <div class="small">왼쪽에서 스킬을 선택하세요.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js?v=20260303_wave"></script>
+</body>
+</html>
