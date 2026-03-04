@@ -318,6 +318,48 @@ hr{border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;}
 .shop-desc{font-size:12px;color:rgba(255,255,255,0.74);margin-bottom:10px;line-height:1.35;}
 .shop-cost{font-size:11px;color:rgba(255,255,255,0.78);}
 
+/* ✅ 코어 HP 바 (상단 UI) */
+.core-hp-pill{gap:6px;}
+.core-hp-bar-wrap{
+  width:68px; height:8px; border-radius:999px;
+  background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.10);
+  overflow:hidden; position:relative;
+}
+.core-hp-bar-fill{
+  height:100%; width:100%; border-radius:999px;
+  background:linear-gradient(90deg, rgba(99,230,190,0.85), rgba(99,230,190,0.65));
+  transition:width 0.3s ease, background 0.3s ease;
+}
+.core-hp-bar-fill.danger{
+  background:linear-gradient(90deg, rgba(255,107,107,0.90), rgba(255,80,80,0.75));
+  animation:coreHpPulse 0.6s ease-in-out infinite;
+}
+.core-hp-bar-fill.warning{
+  background:linear-gradient(90deg, rgba(255,212,59,0.85), rgba(255,180,50,0.70));
+}
+@keyframes coreHpPulse{
+  0%,100%{opacity:1;}
+  50%{opacity:0.65;}
+}
+.core-hp-num{font-weight:900;font-variant-numeric:tabular-nums;min-width:22px;text-align:right;}
+
+/* ✅ 티켓 아이콘 */
+.ticket-icon{font-size:12px;margin-right:1px;}
+
+/* ✅ 게임오버 모달 개선 */
+.gameover-modal{width:min(520px,calc(100vw - 32px));}
+.gameover-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+.gameover-stat{
+  padding:10px 12px;
+  border-radius:12px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.10);
+}
+.gameover-stat .stat-label{font-size:11px;color:rgba(255,255,255,0.60);margin-bottom:3px;}
+.gameover-stat .stat-value{font-size:18px;font-weight:900;color:rgba(255,255,255,0.92);}
+.gameover-stat .stat-value.xp{color:#74c0fc;}
+.gameover-stat .stat-value.stage{color:#ff6b6b;}
+
 #dps-panel{margin-top:14px;}
 .dps-rows{display:flex;flex-direction:column;gap:10px;}
 .dps-row{padding:10px 10px 12px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);}

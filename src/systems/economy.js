@@ -5,8 +5,8 @@
 export function createEconomyState() {
   return {
     tickets: {
-      common: 4, // 시작 뽑기 (하드코어: 초반 과다 뽑기 방지)
-      rare: 0,
+      common: 6, // 시작 뽑기 (여유로운 초반 빌드업)
+      rare: 1,   // 초반 개조 1회 가능
       legend: 0,
     },
   };

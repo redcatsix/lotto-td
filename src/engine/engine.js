@@ -409,6 +409,8 @@ export async function initEngine() {
 
   // ---------------- UI helpers ----------------
 
+  const elCoreHpBar = document.getElementById("core-hp-bar");
+
   function syncTopUI() {
     elStage.textContent = String(state.stage);
     elCore.textContent = String(state.coreHp);
@@ -418,6 +420,13 @@ export async function initEngine() {
     if (elShopCommon) elShopCommon.textContent = String(state.econ.tickets.common);
     if (elShopRare) elShopRare.textContent = String(state.econ.tickets.rare);
     if (elShopLegend) elShopLegend.textContent = String(state.econ.tickets.legend);
+    // ✅ 코어 HP 바 업데이트
+    if (elCoreHpBar) {
+      const pct = clamp(state.coreHp / (state.coreHpMax || 20), 0, 1);
+      elCoreHpBar.style.width = `${Math.round(pct * 100)}%`;
+      elCoreHpBar.classList.toggle("danger", pct < 0.30);
+      elCoreHpBar.classList.toggle("warning", pct >= 0.30 && pct < 0.60);
+    }
     syncMetaUI();
     speedBtn.textContent = `${state.timeScale}x`;
     if (vfxBtn) {
@@ -1101,11 +1110,26 @@ export async function initEngine() {
         state.lastXpGain = xpGain; state.metaAwarded = true;
         saveMetaState(meta); syncMetaUI();
       }
+      // ✅ 전체 런 통계 계산
+      let totalDmg=0, totalKills=0, towerCount=0, bestDpsTower="—", bestDpsVal=0;
+      for (const [, u] of state.units) {
+        if (u.isSupport) continue;
+        towerCount++;
+        totalDmg += u.totalDamage||0;
+        if ((u.totalDamage||0)>bestDpsVal) { bestDpsVal=u.totalDamage||0; bestDpsTower=`${rarityName(u.itemRarity)} ${u.name}`; }
+      }
       gameoverBody.innerHTML = `
-        <div style="margin-bottom:8px;"><b>Stage ${st}</b> 에서 코어가 파괴되었습니다.</div>
-        <div class="small">획득 XP: <b>+${state.lastXpGain||0}</b> · 보유 XP: <b>${meta.xp??0}</b></div>
-        <div class="small">이번 스테이지 SPECIAL: <b>${sp}</b></div>
-        <div class="small">이번 스테이지 최고 뽑기: <b>${safeText(bestText)}</b></div>
+        <div style="margin-bottom:12px;font-size:16px;"><b>Stage ${st}</b> 에서 코어가 파괴되었습니다.</div>
+        <div class="gameover-stats">
+          <div class="gameover-stat"><div class="stat-label">도달 스테이지</div><div class="stat-value stage">${st}</div></div>
+          <div class="gameover-stat"><div class="stat-label">획득 XP</div><div class="stat-value xp">+${state.lastXpGain||0}</div></div>
+          <div class="gameover-stat"><div class="stat-label">보유 XP</div><div class="stat-value">${meta.xp??0}</div></div>
+          <div class="gameover-stat"><div class="stat-label">타워 수</div><div class="stat-value">${towerCount}</div></div>
+          <div class="gameover-stat"><div class="stat-label">총 피해량</div><div class="stat-value">${shortNum(totalDmg)}</div></div>
+          <div class="gameover-stat"><div class="stat-label">MVP 타워</div><div class="stat-value" style="font-size:13px;">${safeText(bestDpsTower)}</div></div>
+          <div class="gameover-stat"><div class="stat-label">SPECIAL 횟수</div><div class="stat-value">${sp}</div></div>
+          <div class="gameover-stat"><div class="stat-label">최고 뽑기</div><div class="stat-value" style="font-size:13px;">${safeText(bestText)}</div></div>
+        </div>
       `;
     }
     gameoverOverlay.classList.remove("hidden");
@@ -1267,10 +1291,17 @@ export async function initEngine() {
   function grantStageRewards(stage) {
     const gain = { common: 0, rare: 0, legend: 0 };
     state.econ.tickets.common += 1; gain.common += 1;
+    // 2스테이지마다 일반 +1 추가 (자원 여유)
+    if (stage % 2 === 0) { state.econ.tickets.common += 1; gain.common += 1; }
     if (stage % 3 === 0) { state.econ.tickets.rare += 1; gain.rare += 1; }
+    // 5스테이지마다 중간보상: 레어+1, 일반+2
+    if (stage % 5 === 0 && !isBossRound(stage)) {
+      state.econ.tickets.rare += 1; state.econ.tickets.common += 2;
+      gain.rare += 1; gain.common += 2;
+    }
     if (isBossRound(stage)) {
-      state.econ.tickets.legend += 1; state.econ.tickets.rare += 1; state.econ.tickets.common += 1;
-      gain.legend += 1; gain.rare += 1; gain.common += 1;
+      state.econ.tickets.legend += 1; state.econ.tickets.rare += 2; state.econ.tickets.common += 2;
+      gain.legend += 1; gain.rare += 2; gain.common += 2;
       const ch = state.metaMods?.bossExtraLegendChance ?? 0;
       if (ch > 0 && Math.random() < ch) { state.econ.tickets.legend += 1; gain.legend += 1; }
     }
@@ -2228,6 +2259,9 @@ export async function initEngine() {
       ctx.fillText(`준비 중... ${Math.ceil(state.prepTimer)}s`,x0,y0);
       ctx.fillText(`다음: ${isBossRound(state.stage)?"보스전":"일반 라운드"}${waveLabel}`,x0,y0+18);
       ctx.fillText(`${shiftText} · ${hotText}`,x0,y0+36);
+
+      // ✅ 준비 카운트다운 원형 게이지
+      drawPrepCountdown();
     } else if (state.wave) {
       const ww=state.wave;
       const pageText=ww.page<ww.pages?`${ww.page+1}/${ww.pages}`:`${ww.pages}/${ww.pages}`;
@@ -2240,7 +2274,13 @@ export async function initEngine() {
       }
       if (ww.boss) ctx.fillText(`BOSS: ${ww.bossSpawned?"등장":"대기"}`,x0,y0+18);
       ctx.fillText(`${shiftText} · ${hotText}`,x0,y0+(ww.boss?36:18));
+
+      // ✅ 웨이브 진행률 바
+      drawWaveProgressBar(ww, wt, wtInfo);
     }
+
+    // ✅ 코어 HP 바 (하단)
+    drawCoreHpBar();
 
     if (!state.gameOver&&state.selectedKey) {
       const streak=state.rerollStreak.key===state.selectedKey?state.rerollStreak.count:0;
@@ -2266,6 +2306,91 @@ export async function initEngine() {
       ctx.restore();
     }
 
+    ctx.restore();
+  }
+
+  // ✅ 웨이브 진행률 바 (화면 하단)
+  function drawWaveProgressBar(ww, wt, wtInfo) {
+    const barW=logical.w*0.50, barH=8, barX=(logical.w-barW)/2, barY=logical.h-18;
+    const spawned=ww.totalSpawned||0, total=ww.totalToSpawn||1;
+    const killed=Math.max(0, spawned-state.enemies.length);
+    const progress=clamp(killed/total, 0, 1);
+    const spawnProgress=clamp(spawned/total, 0, 1);
+
+    ctx.save();
+    // 배경
+    ctx.fillStyle="rgba(0,0,0,0.40)";
+    roundRect(ctx, barX, barY, barW, barH, 4); ctx.fill();
+    // 스폰 진행 (연한)
+    const spawnColor = (wt!==WAVE_TYPE.NORMAL&&wtInfo) ? `${wtInfo.color}30` : "rgba(255,255,255,0.10)";
+    ctx.fillStyle=spawnColor;
+    roundRect(ctx, barX, barY, barW*spawnProgress, barH, 4); ctx.fill();
+    // 처치 진행 (밝은)
+    const killColor = (wt!==WAVE_TYPE.NORMAL&&wtInfo) ? `${wtInfo.color}BB` : "rgba(99,230,190,0.80)";
+    ctx.fillStyle=killColor;
+    roundRect(ctx, barX, barY, barW*progress, barH, 4); ctx.fill();
+    // 테두리
+    ctx.strokeStyle="rgba(255,255,255,0.15)"; ctx.lineWidth=1;
+    roundRect(ctx, barX, barY, barW, barH, 4); ctx.stroke();
+    // 텍스트
+    ctx.fillStyle="rgba(255,255,255,0.75)"; ctx.font="700 10px ui-sans-serif, system-ui";
+    ctx.textAlign="center"; ctx.textBaseline="bottom";
+    ctx.fillText(`${killed}/${total} 처치`, logical.w/2, barY-3);
+    ctx.restore();
+  }
+
+  // ✅ 코어 HP 바 (우측 상단)
+  function drawCoreHpBar() {
+    if (state.gameOver) return;
+    const barW=120, barH=10, barX=logical.w-barW-14, barY=14;
+    const hpPct=clamp(state.coreHp/(state.coreHpMax||20), 0, 1);
+    const low=hpPct<0.35;
+
+    ctx.save();
+    // 배경
+    ctx.fillStyle="rgba(0,0,0,0.45)";
+    roundRect(ctx, barX, barY, barW, barH, 5); ctx.fill();
+    // HP 바 (위험하면 빨강, 안전하면 초록)
+    const hpColor = low ? "rgba(255,107,107,0.90)" : hpPct<0.65 ? "rgba(255,212,59,0.85)" : "rgba(99,230,190,0.85)";
+    if (low) { ctx.shadowColor="rgba(255,107,107,0.50)"; ctx.shadowBlur=8; }
+    ctx.fillStyle=hpColor;
+    roundRect(ctx, barX, barY, barW*hpPct, barH, 5); ctx.fill();
+    ctx.shadowBlur=0;
+    // 테두리
+    ctx.strokeStyle="rgba(255,255,255,0.18)"; ctx.lineWidth=1;
+    roundRect(ctx, barX, barY, barW, barH, 5); ctx.stroke();
+    // 텍스트
+    ctx.fillStyle="rgba(255,255,255,0.90)"; ctx.font="800 10px ui-sans-serif, system-ui";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(`HP ${state.coreHp}/${state.coreHpMax}`, barX+barW/2, barY+barH/2+1);
+    ctx.restore();
+  }
+
+  // ✅ 준비 카운트다운 원형 게이지
+  function drawPrepCountdown() {
+    const cx=logical.w/2, cy=logical.h/2;
+    const r=40;
+    const prepMax=state.prepBase||3.0;
+    const progress=clamp(1-state.prepTimer/prepMax, 0, 1);
+
+    ctx.save();
+    ctx.globalAlpha=0.65;
+    // 배경 원
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fillStyle="rgba(0,0,0,0.30)"; ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,0.12)"; ctx.lineWidth=4; ctx.stroke();
+    // 진행 아크
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI/2, -Math.PI/2+progress*Math.PI*2);
+    ctx.strokeStyle="rgba(99,230,190,0.85)"; ctx.lineWidth=4;
+    ctx.shadowColor="rgba(99,230,190,0.45)"; ctx.shadowBlur=8;
+    ctx.stroke();
+    ctx.shadowBlur=0;
+    // 카운트다운 숫자
+    ctx.globalAlpha=0.88;
+    ctx.fillStyle="rgba(255,255,255,0.92)"; ctx.font="900 28px ui-sans-serif, system-ui";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(Math.ceil(state.prepTimer)), cx, cy+1);
     ctx.restore();
   }
 
