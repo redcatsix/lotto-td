@@ -135,8 +135,8 @@ function pointOnRect(path, d) {
   return { x: path.x, y: path.y + path.h - t };
 }
 
-const VFX_INTENSITY_BASE = 0.30;
-const DMG_FLOATERS_INTENSITY = 0.60;
+const VFX_INTENSITY_BASE = 0.55;   // 0.30 → 0.55 (VFX 전반 강화)
+const DMG_FLOATERS_INTENSITY = 0.80; // 0.60 → 0.80 (데미지 숫자 더 선명하게)
 const HOTZONE_COUNT_BASE = 6;
 const HOTZONE_ASPD_BONUS_BASE = 0.12;
 const HOTZONE_CRIT_BONUS_BASE = 0.06;
@@ -347,6 +347,7 @@ export async function initEngine() {
     rerollStreak: { key: null, count: 0 },
     units: new Map(),
     enemies: [],
+    bgParticles: [],
     beams: [],
     rings: [],
     puffs: [],
@@ -390,6 +391,24 @@ export async function initEngine() {
   state.econ.tickets.common += Math.round(state.metaMods.startCommonAdd ?? 0);
   state.econ.tickets.rare += Math.round(state.metaMods.startRareAdd ?? 0);
   state.econ.tickets.legend += Math.round(state.metaMods.startLegendAdd ?? 0);
+
+  // 배경 파티클 초기화
+  (function initBgParticles() {
+    const count = 55;
+    for (let i = 0; i < count; i++) {
+      state.bgParticles.push({
+        x: Math.random() * logical.w,
+        y: Math.random() * logical.h,
+        vx: (Math.random() - 0.5) * 14,
+        vy: (Math.random() - 0.5) * 14,
+        r: 0.8 + Math.random() * 1.6,
+        a: 0.10 + Math.random() * 0.22,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.5 + Math.random() * 1.2,
+        color: Math.random() < 0.55 ? "#74c0fc" : Math.random() < 0.5 ? "#b197fc" : "#63e6be",
+      });
+    }
+  })();
 
   const ALL_UNIT_TYPES = Object.values(UNIT_TYPES);
 
@@ -1601,9 +1620,9 @@ export async function initEngine() {
     return { dmg:Math.max(1,Math.round(rawDmg*ai.mul)), rawDmg, isCrit, ricochet:ai.ricochet, armorMul:ai.mul };
   }
 
-  function addBeam(x1, y1, x2, y2, color) {
+  function addBeam(x1, y1, x2, y2, color, thick=2) {
     if (!state.vfxEnabled) return;
-    state.beams.push({ x1, y1, x2, y2, t:0.10, color });
+    state.beams.push({ x1, y1, x2, y2, t:0.12, color, thick });
     const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
     if (len>40) {
       const nx=dx/len, ny=dy/len;
@@ -1743,9 +1762,16 @@ export async function initEngine() {
       if (en.hp>0) { alive.push(en); continue; }
       if (!en.diedToCore&&en.lastHitKey) recordKill(en.lastHitKey);
       const c=en.color||"rgba(255,255,255,0.9)";
-      const power=en.isBoss?2.2:(en.type===ENEMY_TYPES.ELITE?1.4:1.0);
-      addPuff(en.x,en.y,c,power); addHitRing(en.x,en.y,c,en.isBoss);
-      if (en.isBoss) { state.msg={text:"BOSS DOWN!",t:0.9}; triggerScreenShake(0.60,0.22,18); }
+      const power=en.isBoss?3.0:(en.type===ENEMY_TYPES.ELITE?1.8:1.0);
+      addPuff(en.x,en.y,c,power); addHitRing(en.x,en.y,c,en.isBoss||en.type===ENEMY_TYPES.ELITE);
+      if (en.isBoss) {
+        // 보스 킬: 추가 골드 파티클 버스트
+        addPuff(en.x,en.y,"rgba(255,212,59,0.90)",1.8);
+        addHitRing(en.x,en.y,"rgba(255,212,59,0.70)",true);
+        state.msg={text:"BOSS DOWN!",t:1.1}; triggerScreenShake(0.75,0.30,22);
+      } else if (en.type===ENEMY_TYPES.ELITE) {
+        triggerScreenShake(0.20,0.12,8);
+      }
     }
     state.enemies=alive;
   }
@@ -1805,7 +1831,8 @@ export async function initEngine() {
       const critChanceMul=u.auraOn?(u.auraCritChanceMul??1.0):1.0;
       for (const en of targets) {
         const hit=calcDamage(u,en,{critAdd:mods.critAdd,dmgMul:mods.dmgMul,critChanceMul});
-        addBeam(u.x,u.y,en.x,en.y,rarityColor(u.itemRarity));
+        const beamThick = [1.5,2,2.5,3,3.5,4.5][rarityRank(u.itemRarity)] ?? 2;
+        addBeam(u.x,u.y,en.x,en.y,rarityColor(u.itemRarity),hit.isCrit?beamThick*1.6:beamThick);
         u.kick=Math.max(u.kick||0,0.18);
         dealDamage(key,u,en,hit.dmg,hit.isCrit,en.x,en.y,{ricochet:hit.ricochet});
         if (u.blastRadiusCells>0&&u.splashMul>0) applySplash(key,u,en.x,en.y,en.id,hit.rawDmg);
@@ -1887,6 +1914,15 @@ export async function initEngine() {
   }
 
   function updateEffects(dt) {
+    // 배경 파티클 업데이트
+    for (const p of state.bgParticles) {
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.pulse += p.pulseSpeed * dt;
+      if (p.x < -10) p.x = logical.w + 10;
+      if (p.x > logical.w + 10) p.x = -10;
+      if (p.y < -10) p.y = logical.h + 10;
+      if (p.y > logical.h + 10) p.y = -10;
+    }
     if (state.pathShiftAnim) { state.pathShiftAnim.t+=dt; if(state.pathShiftAnim.t>=state.pathShiftAnim.dur) state.pathShiftAnim=null; }
     for (const b of state.beams) b.t-=dt;
     state.beams=state.beams.filter((b)=>b.t>0);
@@ -1935,13 +1971,53 @@ export async function initEngine() {
 
   function drawBackground() {
     ctx.save();
-    const g=ctx.createLinearGradient(0,0,0,logical.h);
-    g.addColorStop(0,"rgba(255,255,255,0.04)"); g.addColorStop(1,"rgba(255,255,255,0.01)");
-    ctx.fillStyle=g; ctx.fillRect(0,0,logical.w,logical.h);
-    ctx.globalAlpha=0.12; ctx.strokeStyle="rgba(255,255,255,0.25)"; ctx.lineWidth=1;
-    const step=30;
-    for (let x=0; x<=logical.w; x+=step) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,logical.h); ctx.stroke(); }
-    for (let y=0; y<=logical.h; y+=step) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(logical.w,y); ctx.stroke(); }
+
+    // 미묘한 배경 그라데이션 오버레이
+    const g = ctx.createLinearGradient(0, 0, logical.w, logical.h);
+    g.addColorStop(0, "rgba(11,42,90,0.06)");
+    g.addColorStop(0.5, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(42,11,90,0.06)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, logical.w, logical.h);
+
+    // 서킷/도트 그리드 (기존보다 더 세련되게)
+    const step = 38;
+    ctx.globalAlpha = 0.055;
+    ctx.strokeStyle = "rgba(116,192,252,0.60)";
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= logical.w; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, logical.h); ctx.stroke();
+    }
+    for (let y = 0; y <= logical.h; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logical.w, y); ctx.stroke();
+    }
+    // 교차점 도트
+    ctx.globalAlpha = 0.10;
+    ctx.fillStyle = "rgba(116,192,252,0.80)";
+    for (let x = 0; x <= logical.w; x += step) {
+      for (let y = 0; y <= logical.h; y += step) {
+        ctx.beginPath(); ctx.arc(x, y, 1.0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // 앰비언트 파티클 (떠다니는 빛 점들)
+    const now = perfNow() / 1000;
+    for (const p of state.bgParticles) {
+      const pulse = 0.5 + 0.5 * Math.sin(p.pulse + now * p.pulseSpeed);
+      ctx.globalAlpha = p.a * (0.5 + 0.5 * pulse);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 4 * pulse;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.7 + 0.3 * pulse), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    // 비넷 효과 (테두리 어둡게)
+    ctx.globalAlpha = 1;
+    const vgn = ctx.createRadialGradient(logical.w/2, logical.h/2, logical.w*0.25, logical.w/2, logical.h/2, logical.w*0.72);
+    vgn.addColorStop(0, "rgba(0,0,0,0)");
+    vgn.addColorStop(1, "rgba(0,0,0,0.22)");
+    ctx.fillStyle = vgn; ctx.fillRect(0, 0, logical.w, logical.h);
+
     ctx.restore();
   }
 
@@ -2013,24 +2089,84 @@ export async function initEngine() {
     }
 
     ctx.save();
-    ctx.lineWidth=9; ctx.strokeStyle=pathColor; ctx.shadowColor=pathGlowColor; ctx.shadowBlur=12;
+    ctx.lineWidth=9; ctx.strokeStyle=pathColor; ctx.shadowColor=pathGlowColor; ctx.shadowBlur=16;
     roundRect(ctx,p.x,p.y,p.w,p.h,26); ctx.stroke();
-    ctx.lineWidth=3; ctx.shadowBlur=0; ctx.strokeStyle="rgba(255,255,255,0.16)";
-    roundRect(ctx,p.x,p.y,p.w,p.h,26); ctx.stroke(); ctx.restore();
+    ctx.lineWidth=2; ctx.shadowBlur=0; ctx.strokeStyle="rgba(255,255,255,0.18)";
+    roundRect(ctx,p.x,p.y,p.w,p.h,26); ctx.stroke();
+
+    // 경로 방향 화살표 (흐르는 애니메이션)
+    const now2 = perfNow() / 1000;
+    const arrowColor = (wtInfo && wt !== WAVE_TYPE.NORMAL) ? `${wtInfo.color}70` : "rgba(255,255,255,0.22)";
+    ctx.strokeStyle = arrowColor; ctx.lineWidth = 2;
+    ctx.shadowColor = arrowColor; ctx.shadowBlur = 5;
+    const pathPerim = 2 * (p.w + p.h);
+    const arrowSpacing = 70;
+    const flowOffset = (now2 * 45) % arrowSpacing;
+    for (let d = flowOffset; d < pathPerim; d += arrowSpacing) {
+      const pt = pointOnRect(p, d);
+      // 진행 방향 계산
+      const pt2 = pointOnRect(p, d + 5);
+      const angle = Math.atan2(pt2.y - pt.y, pt2.x - pt.x);
+      ctx.save();
+      ctx.translate(pt.x, pt.y); ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(-5, -4); ctx.lineTo(0, 0); ctx.lineTo(-5, 4);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
   }
 
   function drawCore() {
-    const c=state.board.core;
+    const c = state.board.core;
+    const now = perfNow() / 1000;
+    const hpPct = clamp(state.coreHp / (state.coreHpMax || 20), 0, 1);
+    const pulse = 0.5 + 0.5 * Math.sin(now * (hpPct < 0.30 ? 6.5 : 2.6));
+    const coreColor = hpPct < 0.30 ? "#ff6b6b" : hpPct < 0.60 ? "#ffd43b" : "#63e6be";
+    const coreColorRgb = hpPct < 0.30 ? "255,107,107" : hpPct < 0.60 ? "255,212,59" : "99,230,190";
+
     ctx.save();
-    const pulse=0.5+0.5*Math.sin(perfNow()/240);
-    const glow=lerp(10,18,pulse);
-    ctx.shadowColor="rgba(255, 107, 107, 0.65)"; ctx.shadowBlur=glow;
-    const grad=ctx.createRadialGradient(c.x-c.r*0.3,c.y-c.r*0.3,c.r*0.2,c.x,c.y,c.r*1.2);
-    grad.addColorStop(0,"rgba(255,255,255,0.95)"); grad.addColorStop(0.25,"rgba(255,107,107,0.95)"); grad.addColorStop(1,"rgba(255,107,107,0.22)");
-    ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(c.x,c.y,c.r*1.25,0,Math.PI*2); ctx.fill();
-    ctx.shadowBlur=0; ctx.lineWidth=2; ctx.strokeStyle="rgba(255,255,255,0.22)"; ctx.beginPath(); ctx.arc(c.x,c.y,c.r*1.25,0,Math.PI*2); ctx.stroke();
-    ctx.fillStyle="rgba(255,255,255,0.92)"; ctx.font="700 18px ui-sans-serif, system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(String(state.coreHp),c.x,c.y+1); ctx.restore();
+
+    // 외곽 맥동 링들
+    const ringCount = 3;
+    for (let i = 0; i < ringCount; i++) {
+      const tOff = (i / ringCount);
+      const ringPulse = (pulse + tOff) % 1.0;
+      const ringR = c.r * (1.5 + ringPulse * 1.8);
+      ctx.globalAlpha = (1 - ringPulse) * 0.18 * (hpPct < 0.30 ? 2.0 : 1.0);
+      ctx.strokeStyle = coreColor;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(c.x, c.y, ringR, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // 외곽 글로우
+    const glowR = lerp(14, 26, pulse);
+    ctx.shadowColor = `rgba(${coreColorRgb},0.70)`;
+    ctx.shadowBlur = glowR;
+
+    // 본체 그라데이션
+    const grad = ctx.createRadialGradient(c.x - c.r * 0.28, c.y - c.r * 0.28, c.r * 0.10, c.x, c.y, c.r * 1.38);
+    grad.addColorStop(0, "rgba(255,255,255,0.98)");
+    grad.addColorStop(0.18, coreColor);
+    grad.addColorStop(0.65, coreColor);
+    grad.addColorStop(1, `rgba(${coreColorRgb},0.12)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.28, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 테두리
+    ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.28, 0, Math.PI * 2); ctx.stroke();
+
+    // HP 숫자
+    ctx.fillStyle = "rgba(255,255,255,0.96)";
+    ctx.font = "800 18px ui-sans-serif, system-ui";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(String(state.coreHp), c.x, c.y + 1);
+
+    ctx.restore();
   }
 
   function drawUnits() {
@@ -2071,6 +2207,28 @@ export async function initEngine() {
       ctx.beginPath(); ctx.arc(0,platformR*0.25,platformR*1.52,0,Math.PI*2); ctx.stroke(); ctx.restore();
     }
     drawTurret(u,col);
+    // 레어리티별 플랫폼 글로우 링
+    const rrank = rarityRank(u.itemRarity);
+    if (rrank >= 1) {
+      const rarPulse = 0.55 + 0.45 * Math.sin(perfNow() / (400 - rrank * 35) + (u.r * 7 + u.c));
+      const ringAlpha = [0, 0.22, 0.30, 0.38, 0.46, 0.56][rrank] ?? 0.22;
+      const ringBlur = [0, 6, 9, 13, 17, 22][rrank] ?? 6;
+      ctx.save();
+      ctx.globalAlpha = ringAlpha * (0.8 + 0.2 * rarPulse);
+      ctx.strokeStyle = col;
+      ctx.lineWidth = [0, 1.5, 2, 2.5, 3, 3.5][rrank] ?? 1.5;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = ringBlur * rarPulse;
+      ctx.beginPath(); ctx.arc(0, platformR * 0.25, platformR * 1.52, 0, Math.PI * 2); ctx.stroke();
+      if (rrank >= 4) {
+        // 고유/신화: 추가 외곽 링
+        ctx.globalAlpha = (ringAlpha * 0.5) * (0.6 + 0.4 * rarPulse);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(0, platformR * 0.25, platformR * 2.1, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     const barW=cell*0.60, barH=5, bx=-barW/2, by=-cell*0.34;
     if (u.reloadT>0&&u.reloadTime>0) {
       const p=clamp(1-u.reloadT/u.reloadTime,0,1);
@@ -2165,39 +2323,153 @@ export async function initEngine() {
   function drawEnemies() { for (const en of state.enemies) drawEnemy(en); }
 
   function drawEnemy(en) {
-    const flash=en.hitFlash; const isElite=en.type===ENEMY_TYPES.ELITE; const isBoss=en.isBoss;
-    const px=Math.max(2,Math.round(en.radius/3));
-    const pattern = isBoss
-      ? ["0011100","0111110","1111111","1111111","0111110","0011100","0001000"]
-      : isElite ? ["10001","11111","11111","01110","00100"]
-      : ["0110","1111","1111","0110"];
-    const w=pattern[0].length, h=pattern.length;
-    const ox=-Math.floor(w/2)*px, oy=-Math.floor(h/2)*px;
-    ctx.save(); ctx.translate(snap(en.x),snap(en.y));
-    ctx.shadowColor=en.color; ctx.shadowBlur=isBoss?10:7;
-    ctx.fillStyle=en.color;
-    for (let y=0;y<h;y++) for(let x=0;x<w;x++) if(pattern[y][x]==="1") ctx.fillRect(ox+x*px,oy+y*px,px,px);
-    ctx.shadowBlur=0; ctx.fillStyle="rgba(0,0,0,0.35)";
-    if (!isBoss) { ctx.fillRect(-px*1.2,-px*0.6,px,px); ctx.fillRect(px*0.2,-px*0.6,px,px); }
-    else { ctx.fillRect(-px*1.6,-px*0.6,px,px); ctx.fillRect(px*0.6,-px*0.6,px,px); }
-    if (isBoss) { ctx.fillStyle="rgba(255,212,59,0.95)"; ctx.fillRect(-px*2.0,-px*3.3,px,px); ctx.fillRect(0,-px*3.6,px,px); ctx.fillRect(px*2.0,-px*3.3,px,px); }
-    if (flash>0&&state.vfxEnabled) {
-      ctx.globalAlpha=clamp(flash*1.2,0,0.32)*VFX_INTENSITY_BASE; ctx.fillStyle="rgba(255,255,255,0.85)";
-      for (let y=0;y<h;y++) for(let x=0;x<w;x++) if(pattern[y][x]==="1") ctx.fillRect(ox+x*px,oy+y*px,px,px);
-      ctx.globalAlpha=1;
+    const flash = en.hitFlash;
+    const isElite = en.type === ENEMY_TYPES.ELITE;
+    const isBoss = en.isBoss;
+    const r = en.radius;
+    const now = perfNow() / 1000;
+    const animSeed = en.animSeed ?? 0;
+
+    ctx.save();
+    ctx.translate(snap(en.x), snap(en.y));
+
+    // ── 보스: 외곽 회전 장식 링 ──
+    if (isBoss) {
+      const angle = now * 0.9 + animSeed;
+      ctx.save();
+      ctx.rotate(angle);
+      ctx.strokeStyle = "rgba(255,212,59,0.40)";
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = "rgba(255,212,59,0.60)";
+      ctx.shadowBlur = 10;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.68, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      // 역방향 링
+      ctx.save();
+      ctx.rotate(-angle * 0.55);
+      ctx.strokeStyle = "rgba(177,151,252,0.28)";
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 0;
+      ctx.setLineDash([4, 10]);
+      ctx.beginPath(); ctx.arc(0, 0, r * 2.05, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
     }
+
+    // ── 엘리트: 장갑 방패 링 ──
+    if (isElite && !isBoss && en.armor > 0) {
+      const armorAlpha = clamp(0.22 + en.armor * 0.05, 0.22, 0.60);
+      ctx.save();
+      ctx.strokeStyle = `rgba(180,190,200,${armorAlpha})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(180,190,200,0.40)";
+      ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.45, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── 본체 그라데이션 원 ──
+    const bodyR = r * (isBoss ? 1.0 : 0.92);
+    const pulse = isBoss ? 0.85 + 0.15 * Math.sin(now * 3.5 + animSeed) : 1.0;
+    const grad = ctx.createRadialGradient(-bodyR * 0.28, -bodyR * 0.28, bodyR * 0.05, 0, 0, bodyR * pulse);
+    const baseCol = en.color;
+    grad.addColorStop(0, "rgba(255,255,255,0.80)");
+    grad.addColorStop(0.25, baseCol);
+    grad.addColorStop(0.72, baseCol);
+    grad.addColorStop(1, "rgba(0,0,0,0.50)");
+
+    ctx.shadowColor = baseCol;
+    ctx.shadowBlur = isBoss ? 22 : isElite ? 14 : 9;
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(0, 0, bodyR * pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // ── 눈 (미니언/엘리트) ──
+    if (!isBoss) {
+      const eyeOff = r * 0.22;
+      const eyeR = r * (isElite ? 0.18 : 0.15);
+      ctx.fillStyle = "rgba(0,0,0,0.65)";
+      ctx.beginPath(); ctx.arc(-eyeOff, -r * 0.10, eyeR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(eyeOff, -r * 0.10, eyeR, 0, Math.PI * 2); ctx.fill();
+      // 눈 하이라이트
+      ctx.fillStyle = "rgba(255,255,255,0.82)";
+      ctx.beginPath(); ctx.arc(-eyeOff - eyeR * 0.28, -r * 0.10 - eyeR * 0.28, eyeR * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(eyeOff - eyeR * 0.28, -r * 0.10 - eyeR * 0.28, eyeR * 0.32, 0, Math.PI * 2); ctx.fill();
+    } else {
+      // 보스 눈 (3개)
+      const bEyeR = r * 0.14;
+      ctx.fillStyle = "rgba(255,212,59,0.92)";
+      ctx.shadowColor = "rgba(255,212,59,0.70)"; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(-r * 0.26, -r * 0.08, bEyeR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 0.26, -r * 0.08, bEyeR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, -r * 0.26, bEyeR * 0.72, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      // 보스 크라운 (삼각형 3개)
+      ctx.fillStyle = "rgba(255,212,59,0.88)";
+      ctx.strokeStyle = "rgba(255,180,0,0.60)"; ctx.lineWidth = 1.2;
+      ctx.shadowColor = "rgba(255,212,59,0.60)"; ctx.shadowBlur = 8;
+      for (let i = -1; i <= 1; i++) {
+        const cx2 = i * r * 0.44, baseY = -bodyR * 0.92;
+        const tipY = baseY - r * (i === 0 ? 0.52 : 0.38);
+        ctx.beginPath();
+        ctx.moveTo(cx2 - r * 0.14, baseY);
+        ctx.lineTo(cx2 + r * 0.14, baseY);
+        ctx.lineTo(cx2, tipY);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    // ── 본체 테두리 ──
+    ctx.strokeStyle = "rgba(255,255,255,0.28)";
+    ctx.lineWidth = isBoss ? 2.5 : isElite ? 2 : 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, bodyR * pulse, 0, Math.PI * 2); ctx.stroke();
+
+    // ── 피격 플래시 ──
+    if (flash > 0 && state.vfxEnabled) {
+      ctx.globalAlpha = clamp(flash * 2.2, 0, 0.55);
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.beginPath(); ctx.arc(0, 0, bodyR * pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
     ctx.restore();
     drawEnemyHp(en);
   }
 
   function drawEnemyHp(en) {
-    const w=en.isBoss?64:42; const h=6;
-    const x=en.x-w/2; const y=en.y-en.radius-14;
+    const barW = en.isBoss ? 70 : en.type === ENEMY_TYPES.ELITE ? 48 : 38;
+    const barH = en.isBoss ? 8 : 6;
+    const x = en.x - barW / 2;
+    const y = en.y - en.radius - (en.isBoss ? 20 : 16);
+    const hpPct = clamp(en.hp / en.maxHp, 0, 1);
+
     ctx.save();
-    ctx.fillStyle="rgba(0,0,0,0.35)"; roundRect(ctx,x,y,w,h,6); ctx.fill();
-    const t=clamp(en.hp/en.maxHp,0,1);
-    ctx.fillStyle=en.isBoss?"rgba(177,151,252,0.95)":"rgba(255,255,255,0.85)";
-    roundRect(ctx,x,y,w*t,h,6); ctx.fill();
+    // 배경
+    ctx.fillStyle = "rgba(0,0,0,0.50)";
+    roundRect(ctx, x - 1, y - 1, barW + 2, barH + 2, 5); ctx.fill();
+    // HP 그라데이션 (체력에 따라 색 변화)
+    const hpColor = hpPct > 0.55 ? (en.isBoss ? "#b197fc" : "#63e6be")
+                  : hpPct > 0.28 ? "#ffd43b" : "#ff6b6b";
+    if (hpPct < 0.28) { ctx.shadowColor = "#ff6b6b"; ctx.shadowBlur = 6; }
+    ctx.fillStyle = hpColor;
+    roundRect(ctx, x, y, barW * hpPct, barH, 4); ctx.fill();
+    ctx.shadowBlur = 0;
+    // 테두리
+    ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 0.8;
+    roundRect(ctx, x, y, barW, barH, 4); ctx.stroke();
+    // 보스 장갑 표시
+    if (en.isBoss && en.armor > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.font = "700 9px ui-sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.fillText(`🛡️${en.armor.toFixed(1)}`, en.x, y - 2);
+    } else if (en.type === ENEMY_TYPES.ELITE && en.armor > 0) {
+      ctx.fillStyle = "rgba(180,190,200,0.75)"; ctx.font = "700 8px ui-sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.fillText(`🛡️${en.armor.toFixed(1)}`, en.x, y - 2);
+    }
     ctx.restore();
   }
 
@@ -2206,20 +2478,25 @@ export async function initEngine() {
     if (vfx>0) {
       for (const b of state.beams) {
         const a=clamp(b.t/0.10,0,1);
-        ctx.save(); ctx.globalAlpha=a*vfx; ctx.strokeStyle=b.color; ctx.lineWidth=2;
-        ctx.shadowColor=b.color; ctx.shadowBlur=10*vfx;
-        ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke(); ctx.restore();
+        ctx.save(); ctx.globalAlpha=a*vfx;
+        // 두께 있는 빔: 외곽 글로우 + 내부 밝은 코어
+        ctx.strokeStyle=b.color; ctx.lineWidth=b.thick??3;
+        ctx.shadowColor=b.color; ctx.shadowBlur=14*vfx;
+        ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke();
+        ctx.strokeStyle="rgba(255,255,255,0.55)"; ctx.lineWidth=1; ctx.shadowBlur=0;
+        ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke();
+        ctx.restore();
       }
       for (const r of state.rings) {
         const a=clamp(r.t/(r.crit?0.42:0.30),0,1);
-        ctx.save(); ctx.globalAlpha=a*vfx; ctx.strokeStyle=r.color; ctx.lineWidth=r.crit?3:2;
-        ctx.shadowColor=r.color; ctx.shadowBlur=(r.crit?16:10)*vfx;
+        ctx.save(); ctx.globalAlpha=a*vfx; ctx.strokeStyle=r.color; ctx.lineWidth=r.crit?4:2;
+        ctx.shadowColor=r.color; ctx.shadowBlur=(r.crit?22:12)*vfx;
         ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,Math.PI*2); ctx.stroke(); ctx.restore();
       }
       for (const p of state.puffs) {
         const a=clamp(p.t/(p.life||0.65),0,1);
-        ctx.save(); ctx.globalAlpha=a*a*0.85*vfx; ctx.fillStyle=p.color;
-        ctx.shadowColor=p.color; ctx.shadowBlur=6*vfx;
+        ctx.save(); ctx.globalAlpha=a*a*0.92*vfx; ctx.fillStyle=p.color;
+        ctx.shadowColor=p.color; ctx.shadowBlur=8*vfx;
         ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.restore();
       }
     }
@@ -2253,12 +2530,23 @@ export async function initEngine() {
     // ✅ 웨이브 타입 라벨 HUD에 표시
     const waveLabel = (wt!==WAVE_TYPE.NORMAL&&wtInfo) ? ` ·  ${getWaveTypeIcon(wt)} ${wtInfo.name}` : "";
 
+    // HUD 배경 패널 (좌상단)
+    if (!state.gameOver) {
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 1;
+      roundRect(ctx, x0 - 6, y0 - 5, 380, 60, 10); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+
     if (state.gameOver) {
       ctx.fillText(`GAME OVER  (Stage ${state.stage})`,x0,y0);
     } else if (state.roundPhase==="PREP") {
       ctx.fillText(`준비 중... ${Math.ceil(state.prepTimer)}s`,x0,y0);
       ctx.fillText(`다음: ${isBossRound(state.stage)?"보스전":"일반 라운드"}${waveLabel}`,x0,y0+18);
-      ctx.fillText(`${shiftText} · ${hotText}`,x0,y0+36);
+      ctx.fillStyle="rgba(255,255,255,0.60)"; ctx.font="600 12px ui-sans-serif, system-ui";
+      ctx.fillText(`${shiftText} · ${hotText}`,x0,y0+38);
 
       // ✅ 준비 카운트다운 원형 게이지
       drawPrepCountdown();
@@ -2267,13 +2555,15 @@ export async function initEngine() {
       const pageText=ww.page<ww.pages?`${ww.page+1}/${ww.pages}`:`${ww.pages}/${ww.pages}`;
       if (wt!==WAVE_TYPE.NORMAL&&wtInfo) {
         ctx.fillStyle=wtInfo.color;
+        ctx.shadowColor=wtInfo.color; ctx.shadowBlur=10;
         ctx.fillText(`${getWaveTypeIcon(wt)} ${wtInfo.name} Wave (${pageText})  Alive ${state.enemies.length}`,x0,y0);
-        ctx.fillStyle="rgba(255,255,255,0.80)";
+        ctx.shadowBlur=0; ctx.fillStyle="rgba(255,255,255,0.80)";
       } else {
         ctx.fillText(`Wave: ${pageText}  (Alive ${state.enemies.length})`,x0,y0);
       }
-      if (ww.boss) ctx.fillText(`BOSS: ${ww.bossSpawned?"등장":"대기"}`,x0,y0+18);
-      ctx.fillText(`${shiftText} · ${hotText}`,x0,y0+(ww.boss?36:18));
+      if (ww.boss) { ctx.fillStyle="rgba(255,107,107,0.90)"; ctx.fillText(`BOSS: ${ww.bossSpawned?"등장":"대기"}`,x0,y0+18); ctx.fillStyle="rgba(255,255,255,0.80)"; }
+      ctx.fillStyle="rgba(255,255,255,0.60)"; ctx.font="600 12px ui-sans-serif, system-ui";
+      ctx.fillText(`${shiftText} · ${hotText}`,x0,y0+(ww.boss?38:18));
 
       // ✅ 웨이브 진행률 바
       drawWaveProgressBar(ww, wt, wtInfo);

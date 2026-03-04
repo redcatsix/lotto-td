@@ -79,10 +79,10 @@ body{
   font-size:13px;
 }
 
-.badge.normal{color:#adb5bd}
-.badge.magic{color:#74c0fc}
-.badge.rare{color:#ffd43b}
-.badge.legend{color:#ff6b6b}
+.badge.normal{color:#adb5bd; border-color:rgba(173,181,189,0.22);}
+.badge.magic{color:#74c0fc; border-color:rgba(116,192,252,0.28); background:rgba(116,192,252,0.06);}
+.badge.rare{color:#ffd43b; border-color:rgba(255,212,59,0.28); background:rgba(255,212,59,0.06);}
+.badge.legend{color:#ff6b6b; border-color:rgba(255,107,107,0.28); background:rgba(255,107,107,0.06);}
 
 /* ✅ 웨이브 타입 배지 */
 .wave-type-badge{
@@ -185,13 +185,27 @@ button:focus-visible{outline:2px solid rgba(116,192,252,0.9);outline-offset:2px}
 
 #gameCanvas{
   border-radius:var(--radius-lg);
-  border:1px solid rgba(255,255,255,0.12);
-  background:rgba(0,0,0,0.22);
-  box-shadow:var(--shadow);
+  border:1px solid rgba(255,255,255,0.14);
+  background:
+    radial-gradient(ellipse at 30% 30%, rgba(11,42,90,0.35) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 70%, rgba(42,11,90,0.25) 0%, transparent 60%),
+    rgba(4,8,18,0.88);
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 0 40px rgba(116,192,252,0.06),
+    inset 0 0 60px rgba(0,0,0,0.20);
   display:block;
   touch-action:none;
-  image-rendering:pixelated;
-  image-rendering:crisp-edges;
+  image-rendering:auto;
+  transition: box-shadow 0.3s ease;
+}
+#gameCanvas:focus-within, #gameCanvas:active {
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(255,255,255,0.10),
+    0 0 60px rgba(116,192,252,0.10),
+    inset 0 0 60px rgba(0,0,0,0.20);
 }
 
 .menu{
@@ -361,11 +375,13 @@ hr{border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;}
 .gameover-stat .stat-value.stage{color:#ff6b6b;}
 
 #dps-panel{margin-top:14px;}
-.dps-rows{display:flex;flex-direction:column;gap:10px;}
-.dps-row{padding:10px 10px 12px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);}
+.dps-rows{display:flex;flex-direction:column;gap:8px;}
+.dps-row{padding:10px 10px 12px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);transition:border-color 0.2s ease;}
+.dps-row:hover{border-color:rgba(255,255,255,0.18);}
 .dps-row-head{display:flex;align-items:baseline;gap:8px;min-width:0;}
 .dps-rank{width:30px;font-weight:900;letter-spacing:0.4px;color:rgba(255,255,255,0.65);}
+.dps-rank:first-child{color:#ffd43b;}
 .dps-name{flex:1;min-width:0;font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dps-val{font-size:12px;opacity:0.82;}
-.dps-bar{margin-top:8px;height:10px;border-radius:999px;background:rgba(0,0,0,0.35);overflow:hidden;border:1px solid rgba(255,255,255,0.08);}
-.dps-bar-fill{height:100%;width:0%;border-radius:999px;transition:width 0.25s ease,opacity 0.25s ease;}
+.dps-val{font-size:12px;opacity:0.82;font-variant-numeric:tabular-nums;}
+.dps-bar{margin-top:8px;height:8px;border-radius:999px;background:rgba(0,0,0,0.35);overflow:hidden;border:1px solid rgba(255,255,255,0.08);}
+.dps-bar-fill{height:100%;width:0%;border-radius:999px;transition:width 0.30s ease,opacity 0.30s ease;background:linear-gradient(90deg,rgba(99,230,190,0.80),rgba(116,192,252,0.70));}
