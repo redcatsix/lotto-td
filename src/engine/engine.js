@@ -2310,275 +2310,367 @@ export async function initEngine() {
     ctx.restore();
   }
 
-  // ── Random Dice 스타일 주사위 포탑 ──────────────────────────
-  // ── Random Dice 컬러 컨셉 + 타워디펜스 터렛 형태 ────────────
+  // ── 중세 판타지 타워 (워크래프트3 휴먼 스타일) ──────────────
+  // hex 밝기 조절 헬퍼
+  function hexAdj(hex, amt) {
+    const n = parseInt(hex.replace("#",""), 16);
+    const r = clamp(((n>>16)&0xff)+amt, 0, 255);
+    const g = clamp(((n>>8)&0xff)+amt, 0, 255);
+    const b = clamp((n&0xff)+amt, 0, 255);
+    return `rgb(${r},${g},${b})`;
+  }
+
   function drawTurret(u, accent) {
     const cell = state.board.cell;
     const rrank = rarityRank(u.itemRarity);
     const sizeBoost = [1.0, 1.06, 1.12, 1.18, 1.24, 1.30][rrank] ?? 1.0;
-    const baseR   = cell * 0.18 * sizeBoost; // 기지 반지름 (50% + 레어리티 보정)
-    const turretR = cell * 0.11 * sizeBoost; // 포탑 헤드 반지름
+    const R = cell * 0.22 * sizeBoost;  // 타워 외곽 반지름
+    const now = perfNow() / 1000;
 
-    // 타입별: base 색(어두운 포화색), barrel 색(밝은 포화색), 포신 형태
+    // 타입별: 돌 기조색, 액센트 컬러, 상단 장식 종류
     const TCFG = {
-      SNIPER:      { base: "#1a5c38", barrel: "#51cf66", bL: 0.24, bW: 0.031, sp: "scope"   },
-      SHOTGUN:     { base: "#7c1a1a", barrel: "#ff6b6b", bL: 0.14, bW: 0.046, sp: "double"  },
-      FROST:       { base: "#1a3870", barrel: "#74c0fc", bL: 0.17, bW: 0.041, sp: "crystal" },
-      TESLA:       { base: "#3a2c00", barrel: "#ffd43b", bL: 0.12, bW: 0.039, sp: "fork"    },
-      MORTAR:      { base: "#3a1a60", barrel: "#cc5de8", bL: 0.11, bW: 0.065, sp: "mortar"  },
-      BARRAGE:     { base: "#6a2e00", barrel: "#ffa94d", bL: 0.18, bW: 0.040, sp: null      },
-      CANNON:      { base: "#5c2800", barrel: "#fd7e14", bL: 0.19, bW: 0.059, sp: "cannon"  },
-      GATLING:     { base: "#7a3600", barrel: "#ff9240", bL: 0.14, bW: 0.028, sp: "triple"  },
-      BERSERKER:   { base: "#5a0000", barrel: "#ff0000", bL: 0.17, bW: 0.044, sp: null      },
-      EXECUTIONER: { base: "#380808", barrel: "#e03131", bL: 0.20, bW: 0.034, sp: null      },
-      GIANTSLAYER: { base: "#3e2600", barrel: "#ffd43b", bL: 0.19, bW: 0.069, sp: "heavy"   },
-      PINBALL:     { base: "#003848", barrel: "#22b8cf", bL: 0.12, bW: 0.034, sp: "ball"    },
-      RADAR:       { base: "#200050", barrel: "#b197fc", bL: 0.08, bW: 0.026, sp: "dish"    },
+      SNIPER:      { stone: "#364428", acc: "#74b816", cap: "arrow"   },
+      SHOTGUN:     { stone: "#442828", acc: "#f03e3e", cap: "scatter" },
+      FROST:       { stone: "#1e2e4c", acc: "#74c0fc", cap: "ice"     },
+      TESLA:       { stone: "#2e2c00", acc: "#f59f00", cap: "bolt"    },
+      MORTAR:      { stone: "#2c1244", acc: "#cc5de8", cap: "bowl"    },
+      BARRAGE:     { stone: "#3c2c00", acc: "#ffa94d", cap: "volley"  },
+      CANNON:      { stone: "#3a2000", acc: "#fd7e14", cap: "cannon"  },
+      GATLING:     { stone: "#3a2200", acc: "#ff9240", cap: "spin"    },
+      BERSERKER:   { stone: "#3a0000", acc: "#ff4444", cap: "blades"  },
+      EXECUTIONER: { stone: "#280808", acc: "#c92a2a", cap: "scythe"  },
+      GIANTSLAYER: { stone: "#301c00", acc: "#ffd43b", cap: "hammer"  },
+      PINBALL:     { stone: "#002c38", acc: "#22b8cf", cap: "orb"     },
+      RADAR:       { stone: "#180038", acc: "#b197fc", cap: "eye"     },
     };
-    const cfg = TCFG[u.type] ?? { base: "#1a2a4a", barrel: accent, bL: 0.19, bW: 0.044, sp: null };
-    const bL  = cell * cfg.bL;  // 포신 길이
-    const bW  = cell * cfg.bW;  // 포신 너비
-    const bSx = turretR * 0.72; // 포신 시작 X (터렛 헤드 가장자리)
+    const cfg = TCFG[u.type] ?? { stone: "#2a3040", acc: accent, cap: "orb" };
 
     ctx.save();
-    ctx.translate(0, -cell * 0.05);
 
-    // ① 지면 그림자 (입체감)
+    // ① 지면 그림자
     ctx.save();
-    ctx.globalAlpha = 0.28;
-    ctx.fillStyle = "rgba(0,0,0,1)";
-    ctx.beginPath(); ctx.ellipse(1, baseR * 0.52, baseR * 1.08, baseR * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.ellipse(R*0.10, R*0.65, R*1.20, R*0.36, 0, 0, Math.PI*2); ctx.fill();
     ctx.restore();
 
-    // ② 기지 (원형, 컬러 + 셀-쉐이드)
-    ctx.fillStyle = cfg.base;
-    ctx.shadowColor = cfg.barrel;
-    ctx.shadowBlur = 13;
-    ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
+    // ② 외벽 베이스 (어두운 외곽)
+    ctx.fillStyle = hexAdj(cfg.stone, -45);
+    ctx.shadowColor = cfg.acc; ctx.shadowBlur = 11;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
-    // 셀-쉐이드 오버레이 (좌상단 밝음 → 우하단 어두움)
-    const cel = ctx.createRadialGradient(-baseR * 0.38, -baseR * 0.38, 0, baseR * 0.45, baseR * 0.45, baseR * 1.6);
-    cel.addColorStop(0, "rgba(255,255,255,0.30)");
-    cel.addColorStop(0.42, "rgba(255,255,255,0)");
-    cel.addColorStop(1, "rgba(0,0,0,0.38)");
-    ctx.fillStyle = cel;
-    ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
-    // 기지 테두리 — 굵은 컬러 아웃라인 (Random Dice 핵심 스타일)
-    ctx.strokeStyle = cfg.barrel;
-    ctx.lineWidth = 2.8;
-    ctx.shadowColor = cfg.barrel;
-    ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.stroke();
-    ctx.shadowBlur = 0;
-    // 기지 내부 장식 링
-    ctx.strokeStyle = "rgba(255,255,255,0.13)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(0, 0, baseR * 0.60, 0, Math.PI * 2); ctx.stroke();
 
-    // ② 레어리티 장식 (MAGIC 이상)
+    // 돌 표면 셀-쉐이드
+    const sg = ctx.createRadialGradient(-R*0.28, -R*0.30, 0, R*0.10, R*0.10, R*1.85);
+    sg.addColorStop(0,    hexAdj(cfg.stone,  60));
+    sg.addColorStop(0.45, cfg.stone);
+    sg.addColorStop(1,    hexAdj(cfg.stone, -55));
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI*2); ctx.fill();
+
+    // 돌 줄눈 (원형 라인)
+    ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, 0, R*0.70, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.arc(0, 0, R*0.42, 0, Math.PI*2); ctx.stroke();
+
+    // ③ 외벽 컬러 테두리
+    ctx.strokeStyle = cfg.acc; ctx.lineWidth = 2.4;
+    ctx.shadowColor = cfg.acc; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI*2); ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // ④ 성가퀴 (crenellations — 8개 흉벽 돌출)
+    const cN = 8;
+    const cW = R * 0.19, cH = R * 0.18;
+    for (let i = 0; i < cN; i++) {
+      const ang = (i / cN) * Math.PI * 2 - Math.PI / 8;
+      ctx.save();
+      ctx.rotate(ang);
+      // 흉벽 블록
+      ctx.fillStyle = hexAdj(cfg.stone, 30);
+      ctx.shadowColor = cfg.acc; ctx.shadowBlur = 3;
+      roundRect(ctx, R - cH * 0.5, -cW * 0.5, cH, cW, cW * 0.25); ctx.fill();
+      // 흉벽 윗면 하이라이트
+      ctx.fillStyle = hexAdj(cfg.stone, 65);
+      ctx.shadowBlur = 0;
+      roundRect(ctx, R - cH * 0.5, -cW * 0.5, cH * 0.28, cW, cW * 0.22); ctx.fill();
+      // 흉벽 테두리
+      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 0.8;
+      roundRect(ctx, R - cH * 0.5, -cW * 0.5, cH, cW, cW * 0.25); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.shadowBlur = 0;
+
+    // ⑤ 내부 바닥 (타워 내부 — 어두운 원)
+    const iR = R * 0.55;
+    const ig = ctx.createRadialGradient(-iR*0.15, -iR*0.18, 0, 0, 0, iR);
+    ig.addColorStop(0, hexAdj(cfg.stone, -20));
+    ig.addColorStop(1, hexAdj(cfg.stone, -60));
+    ctx.fillStyle = ig;
+    ctx.beginPath(); ctx.arc(0, 0, iR, 0, Math.PI*2); ctx.fill();
+    // 내부 링 장식
+    ctx.strokeStyle = "rgba(255,255,255,0.09)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, iR*0.65, 0, Math.PI*2); ctx.stroke();
+
+    // ⑥ 레어리티 장식
     if (rrank >= 1) {
-      const now2 = perfNow() / 1000;
       if (rrank === 1) {
-        // MAGIC: 추가 내부 링
-        ctx.strokeStyle = cfg.barrel;
-        ctx.globalAlpha = 0.45;
+        // MAGIC: 내부 마법 링
+        ctx.strokeStyle = cfg.acc; ctx.globalAlpha = 0.48;
         ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(0, 0, baseR * 0.80, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, R*0.72, 0, Math.PI*2); ctx.stroke();
         ctx.globalAlpha = 1;
       } else {
-        // RARE+: 테두리 도트
-        const dotCount = rrank >= 4 ? 6 : 4;
-        const rotSpeed = rrank >= 5 ? now2 * 1.4 : (rrank >= 4 ? now2 * 0.9 : 0);
-        ctx.fillStyle = cfg.barrel;
-        ctx.shadowColor = cfg.barrel;
-        ctx.shadowBlur = 8;
-        for (let i = 0; i < dotCount; i++) {
-          const ang = rotSpeed + (i / dotCount) * Math.PI * 2;
-          const dr = baseR * 0.82;
-          ctx.beginPath(); ctx.arc(Math.cos(ang) * dr, Math.sin(ang) * dr, baseR * 0.10, 0, Math.PI * 2); ctx.fill();
+        // RARE+: 성벽 위 발광 보석 도트
+        const dC = rrank >= 4 ? 6 : 4;
+        const rot = rrank >= 5 ? now * 1.2 : (rrank >= 4 ? now * 0.7 : 0);
+        ctx.fillStyle = cfg.acc; ctx.shadowColor = cfg.acc; ctx.shadowBlur = 12;
+        for (let i = 0; i < dC; i++) {
+          const a = rot + (i / dC) * Math.PI * 2;
+          const dr = R * 1.04;
+          ctx.beginPath(); ctx.arc(Math.cos(a)*dr, Math.sin(a)*dr, R*0.09, 0, Math.PI*2); ctx.fill();
         }
         ctx.shadowBlur = 0;
       }
-      // LEGENDARY+: 외부 액센트 링
       if (rrank >= 3) {
-        ctx.strokeStyle = cfg.barrel;
-        ctx.globalAlpha = 0.55;
-        ctx.lineWidth = 1.5;
-        ctx.shadowColor = cfg.barrel;
-        ctx.shadowBlur = 10;
-        ctx.beginPath(); ctx.arc(0, 0, baseR * 1.30, 0, Math.PI * 2); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
+        // LEGENDARY+: 점선 마법진 링
+        ctx.strokeStyle = cfg.acc; ctx.globalAlpha = 0.50;
+        ctx.lineWidth = 1.5; ctx.shadowColor = cfg.acc; ctx.shadowBlur = 12;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.arc(0, 0, R*1.42, 0, Math.PI*2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
-      // MYTHIC: 외부 펄싱 링
       if (rrank >= 5) {
-        const pulse = 0.5 + 0.5 * Math.sin(perfNow() / 1000 * 3.5);
-        ctx.strokeStyle = cfg.barrel;
-        ctx.globalAlpha = 0.30 + 0.30 * pulse;
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = cfg.barrel;
-        ctx.shadowBlur = 18;
-        ctx.beginPath(); ctx.arc(0, 0, baseR * 1.62, 0, Math.PI * 2); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
+        // MYTHIC: 펄싱 오라
+        const pulse = 0.5 + 0.5 * Math.sin(now * 3.5);
+        ctx.strokeStyle = cfg.acc; ctx.globalAlpha = 0.28 + 0.28 * pulse;
+        ctx.lineWidth = 3; ctx.shadowColor = cfg.acc; ctx.shadowBlur = 22;
+        ctx.beginPath(); ctx.arc(0, 0, R*1.72, 0, Math.PI*2); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
     }
 
-    // ③ 포탑 헤드 + 포신 (aimAngle 기준 회전)
+    // ⑦ 상단 장식 (타입별, aimAngle 회전)
     ctx.save();
     ctx.rotate(u.aimAngle || 0);
+    drawTowerCap(cfg.cap, cfg.acc, iR, now);
+    ctx.restore();
 
-    // 터렛 헤드 (셀-쉐이드)
-    ctx.fillStyle = cfg.base;
-    ctx.beginPath(); ctx.arc(0, 0, turretR, 0, Math.PI * 2); ctx.fill();
-    const tCel = ctx.createRadialGradient(-turretR * 0.32, -turretR * 0.32, 0, turretR * 0.42, turretR * 0.42, turretR * 1.45);
-    tCel.addColorStop(0, "rgba(255,255,255,0.35)");
-    tCel.addColorStop(0.42, "rgba(255,255,255,0)");
-    tCel.addColorStop(1, "rgba(0,0,0,0.42)");
-    ctx.fillStyle = tCel;
-    ctx.beginPath(); ctx.arc(0, 0, turretR, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = cfg.barrel;
-    ctx.lineWidth = 2.2;
-    ctx.shadowColor = cfg.barrel;
-    ctx.shadowBlur = 7;
-    ctx.beginPath(); ctx.arc(0, 0, turretR, 0, Math.PI * 2); ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
 
-    // 포신 공통 스타일
-    ctx.fillStyle = cfg.barrel;
-    ctx.shadowColor = cfg.barrel;
-    ctx.shadowBlur = 8;
+  // 타워 상단 타입별 장식 렌더링
+  function drawTowerCap(type, color, r, now) {
+    ctx.shadowColor = color; ctx.shadowBlur = 12;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
 
-    // 포신 타입별 렌더링
-    switch (cfg.sp) {
-      case "double": {
-        // 산탄총: 위아래 두 포신
-        const dy = bW * 0.88;
-        for (const off of [-dy, dy]) {
-          ctx.save(); ctx.translate(0, off);
-          roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+    switch (type) {
+      case "arrow": {
+        // 저격탑: 조준 화살표
+        ctx.lineWidth = r * 0.20;
+        ctx.beginPath(); ctx.moveTo(-r*0.28, 0); ctx.lineTo(r*0.46, 0); ctx.stroke();
+        ctx.lineWidth = r * 0.18;
+        ctx.beginPath(); ctx.moveTo(r*0.46, 0); ctx.lineTo(r*0.16, -r*0.30); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r*0.46, 0); ctx.lineTo(r*0.16, r*0.30); ctx.stroke();
+        // 화살 꽁지 깃
+        ctx.lineWidth = r * 0.10;
+        ctx.beginPath(); ctx.moveTo(-r*0.20, 0); ctx.lineTo(-r*0.38, -r*0.18); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r*0.20, 0); ctx.lineTo(-r*0.38, r*0.18); ctx.stroke();
+        break;
+      }
+      case "scatter": {
+        // 산탄탑: 3개 방사 화살
+        for (const ang of [-0.40, 0, 0.40]) {
+          ctx.save(); ctx.rotate(ang);
+          ctx.lineWidth = r * 0.16;
+          ctx.beginPath(); ctx.moveTo(r*0.04, 0); ctx.lineTo(r*0.52, 0); ctx.stroke();
+          ctx.lineWidth = r * 0.12;
+          ctx.beginPath(); ctx.moveTo(r*0.52, 0); ctx.lineTo(r*0.30, -r*0.22); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(r*0.52, 0); ctx.lineTo(r*0.30, r*0.22); ctx.stroke();
           ctx.restore();
         }
         break;
       }
-      case "triple": {
-        // 개틀링: 세 포신
-        for (const off of [-bW * 1.08, 0, bW * 1.08]) {
-          ctx.save(); ctx.translate(0, off);
-          roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+      case "ice": {
+        // 프로스트탑: 6각 눈송이
+        for (let i = 0; i < 6; i++) {
+          ctx.save(); ctx.rotate((i / 6) * Math.PI * 2);
+          ctx.lineWidth = r * 0.15;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r*0.50, 0); ctx.stroke();
+          ctx.lineWidth = r * 0.10;
+          ctx.beginPath(); ctx.moveTo(r*0.26, 0); ctx.lineTo(r*0.42, -r*0.18); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(r*0.26, 0); ctx.lineTo(r*0.42, r*0.18); ctx.stroke();
           ctx.restore();
         }
-        break;
-      }
-      case "scope": {
-        // 저격: 긴 포신 + 조준경
-        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+        // 중심 보석
+        ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(0, 0, r*0.18, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.80)";
         ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(0,0,0,0.48)";
-        roundRect(ctx, bSx + bL * 0.36, -bW * 1.18, bL * 0.25, bW * 0.78, bW * 0.2); ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.32)"; ctx.lineWidth = 1;
-        roundRect(ctx, bSx + bL * 0.36, -bW * 1.18, bL * 0.25, bW * 0.78, bW * 0.2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-r*0.05, -r*0.05, r*0.07, 0, Math.PI*2); ctx.fill();
         break;
       }
-      case "fork": {
-        // 테슬라: 포신 + Y자 전기 포크
-        roundRect(ctx, bSx, -bW * 0.5, bL * 0.60, bW, bW * 0.4); ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.save();
-        ctx.strokeStyle = cfg.barrel;
-        ctx.lineCap = "round";
-        ctx.lineWidth = bW * 1.35;
-        const fx = bSx + bL * 0.56;
-        ctx.beginPath(); ctx.moveTo(fx, 0); ctx.lineTo(fx + bL * 0.40, -bW * 1.65); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(fx, 0); ctx.lineTo(fx + bL * 0.40, bW * 1.65); ctx.stroke();
-        ctx.restore();
-        break;
-      }
-      case "crystal": {
-        // 프로스트: 포신 + 아이스 크리스탈 끝
-        roundRect(ctx, bSx, -bW * 0.5, bL * 0.70, bW, bW * 0.4); ctx.fill();
-        const cx2 = bSx + bL * 0.68;
+      case "bolt": {
+        // 테슬라탑: 번개 볼트
+        ctx.lineWidth = r * 0.16;
         ctx.beginPath();
-        ctx.moveTo(cx2, -bW * 0.92);
-        ctx.lineTo(cx2 + bL * 0.24, 0);
-        ctx.lineTo(cx2, bW * 0.92);
-        ctx.lineTo(cx2 - bW * 0.28, 0);
-        ctx.closePath(); ctx.fill();
+        ctx.moveTo(-r*0.08, -r*0.46);
+        ctx.lineTo(r*0.18,  -r*0.04);
+        ctx.lineTo(-r*0.02, -r*0.04);
+        ctx.lineTo(r*0.10,   r*0.46);
+        ctx.lineTo(-r*0.20,  r*0.02);
+        ctx.lineTo(r*0.00,   r*0.02);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.globalAlpha = 0.45; ctx.fill(); ctx.globalAlpha = 1;
         break;
       }
-      case "mortar": {
-        // 모르타르: 짧고 넓은 포신, 위로 기울임 (박격포)
-        ctx.save(); ctx.rotate(-Math.PI / 5.5);
-        roundRect(ctx, turretR * 0.68, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
-        ctx.beginPath(); ctx.arc(turretR * 0.68 + bL, 0, bW * 0.56, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+      case "bowl": {
+        // 모르타르탑: 박격포 그릇
+        ctx.lineWidth = r * 0.22; ctx.lineCap = "butt";
+        ctx.beginPath(); ctx.arc(0, r*0.08, r*0.34, Math.PI, 0, false); ctx.stroke();
+        ctx.lineWidth = r * 0.18; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-r*0.38, r*0.08); ctx.lineTo(r*0.38, r*0.08); ctx.stroke();
+        // 포탄
+        ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(0, -r*0.26, r*0.16, 0, Math.PI*2); ctx.fill();
+        break;
+      }
+      case "volley": {
+        // 바라지탑: 4방향 화살 (일제사격)
+        for (let i = 0; i < 4; i++) {
+          const a = -0.60 + i * 0.42;
+          ctx.save(); ctx.rotate(a - Math.PI/2);
+          ctx.lineWidth = r * 0.13;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r*0.50, 0); ctx.stroke();
+          ctx.lineWidth = r * 0.10;
+          ctx.beginPath(); ctx.moveTo(r*0.50, 0); ctx.lineTo(r*0.30, -r*0.20); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(r*0.50, 0); ctx.lineTo(r*0.30, r*0.20); ctx.stroke();
+          ctx.restore();
+        }
         break;
       }
       case "cannon": {
-        // 캐논: 두꺼운 포신 + 밴드 장식 + 둥근 포구
-        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
-        ctx.beginPath(); ctx.arc(bSx + bL, 0, bW * 0.50, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(0,0,0,0.30)";
-        for (let t = 0.26; t < 0.94; t += 0.25) {
-          roundRect(ctx, bSx + bL * t, -bW * 0.5, bW * 0.52, bW, 1); ctx.fill();
+        // 캐논탑: 두꺼운 포신
+        ctx.lineWidth = r * 0.40; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-r*0.16, 0); ctx.lineTo(r*0.44, 0); ctx.stroke();
+        // 포구 링 (밝은)
+        ctx.lineWidth = r * 0.13; ctx.strokeStyle = hexAdj(color.startsWith("rgb") ? "#fd7e14" : color, 60);
+        ctx.lineCap = "butt";
+        ctx.beginPath(); ctx.arc(r*0.44, 0, r*0.22, 0, Math.PI*2); ctx.stroke();
+        // 밴드 장식
+        ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.lineWidth = r*0.10;
+        for (const t of [0.08, 0.28, 0.52]) {
+          const xx = -r*0.16 + (r*0.60)*t;
+          ctx.beginPath(); ctx.moveTo(xx, -r*0.20); ctx.lineTo(xx, r*0.20); ctx.stroke();
         }
         break;
       }
-      case "heavy": {
-        // 자이언트슬레이어: 넓고 짧은 중포 + 둥근 포구
-        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
-        ctx.beginPath(); ctx.arc(bSx + bL, 0, bW * 0.62, 0, Math.PI * 2); ctx.fill();
-        break;
-      }
-      case "ball": {
-        // 핀볼: 짧은 포신 + 구형 발사구
-        roundRect(ctx, bSx, -bW * 0.5, bL * 0.62, bW, bW * 0.4); ctx.fill();
-        ctx.beginPath(); ctx.arc(bSx + bL * 0.62, 0, bW * 0.92, 0, Math.PI * 2); ctx.fill();
-        break;
-      }
-      case "dish": {
-        // 레이더: 짧은 마스트 + 위성 접시
-        roundRect(ctx, bSx, -bW * 0.44, bL * 0.42, bW * 0.75, bW * 0.3); ctx.fill();
+      case "spin": {
+        // 개틀링탑: 회전 3포신 + 중심 허브
+        const spinAng = now * 5.0;
+        for (let i = 0; i < 3; i++) {
+          ctx.save(); ctx.rotate(spinAng + (i / 3) * Math.PI * 2);
+          ctx.lineWidth = r * 0.18;
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r*0.50, 0); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.arc(0, 0, r*0.18, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.80)";
         ctx.shadowBlur = 0;
-        ctx.save();
-        ctx.strokeStyle = cfg.barrel;
-        ctx.lineWidth = bW * 0.78;
-        ctx.lineCap = "butt";
-        const dx = bSx + bL * 0.44;
-        ctx.beginPath(); ctx.arc(dx, 0, bW * 1.32, -Math.PI * 0.54, Math.PI * 0.54); ctx.stroke();
-        ctx.restore();
+        ctx.beginPath(); ctx.arc(0, 0, r*0.07, 0, Math.PI*2); ctx.fill();
+        break;
+      }
+      case "blades": {
+        // 광전사탑: 교차 검 X
+        for (const a of [-Math.PI/4, Math.PI/4]) {
+          ctx.save(); ctx.rotate(a);
+          ctx.lineWidth = r * 0.18;
+          ctx.beginPath(); ctx.moveTo(-r*0.48, 0); ctx.lineTo(r*0.48, 0); ctx.stroke();
+          // 검날 끝 뾰족
+          ctx.beginPath();
+          ctx.moveTo(r*0.48, 0); ctx.lineTo(r*0.38, -r*0.14); ctx.lineTo(r*0.60, 0); ctx.lineTo(r*0.38, r*0.14);
+          ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
+        break;
+      }
+      case "scythe": {
+        // 처형자탑: 낫 (큰 곡선)
+        ctx.lineWidth = r * 0.16;
+        ctx.beginPath(); ctx.moveTo(-r*0.10, r*0.44); ctx.lineTo(-r*0.10, -r*0.38); ctx.stroke(); // 자루
+        ctx.lineWidth = r * 0.20;
+        ctx.beginPath(); ctx.arc(-r*0.10, -r*0.08, r*0.36, -Math.PI*0.85, -Math.PI*0.10); ctx.stroke(); // 날
+        // 날 끝
+        ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(r*0.25, -r*0.38, r*0.10, 0, Math.PI*2); ctx.fill();
+        break;
+      }
+      case "hammer": {
+        // 자이언트슬레이어탑: 전쟁 해머
+        ctx.lineWidth = r * 0.18;
+        ctx.beginPath(); ctx.moveTo(-r*0.08, r*0.38); ctx.lineTo(r*0.08, -r*0.28); ctx.stroke(); // 자루
+        // 해머 헤드
+        ctx.shadowBlur = 16;
+        roundRect(ctx, r*0.00, -r*0.50, r*0.40, r*0.24, r*0.06); ctx.fill();
+        // 헤드 하이라이트
+        ctx.fillStyle = "rgba(255,255,255,0.30)";
+        ctx.shadowBlur = 0;
+        roundRect(ctx, r*0.00, -r*0.50, r*0.40, r*0.08, r*0.04); ctx.fill();
+        break;
+      }
+      case "orb": {
+        // 핀볼탑: 빛나는 마법 구체
+        const pulse = 0.80 + 0.20 * Math.sin(now * 3.0);
+        const og = ctx.createRadialGradient(-r*0.12, -r*0.14, 0, 0, 0, r*0.42*pulse);
+        og.addColorStop(0, "rgba(255,255,255,0.95)");
+        og.addColorStop(0.38, color);
+        og.addColorStop(1, "rgba(0,0,0,0.05)");
+        ctx.fillStyle = og;
+        ctx.shadowBlur = 16 * pulse;
+        ctx.beginPath(); ctx.arc(0, 0, r*0.42*pulse, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(-r*0.11, -r*0.13, r*0.10, 0, Math.PI*2); ctx.fill();
+        break;
+      }
+      case "eye": {
+        // 레이더탑: 수정구슬 + 감지 파장
+        // 외곽 링
+        ctx.lineWidth = r * 0.15;
+        ctx.beginPath(); ctx.arc(0, 0, r*0.38, 0, Math.PI*2); ctx.stroke();
+        // 구슬
+        const eg = ctx.createRadialGradient(-r*0.10, -r*0.10, 0, 0, 0, r*0.24);
+        eg.addColorStop(0, "rgba(255,255,255,0.90)");
+        eg.addColorStop(0.5, color);
+        eg.addColorStop(1, "rgba(0,0,0,0.20)");
+        ctx.fillStyle = eg; ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(0, 0, r*0.24, 0, Math.PI*2); ctx.fill();
+        // 회전 스캔선 3개
+        ctx.strokeStyle = color; ctx.lineWidth = r*0.08; ctx.globalAlpha = 0.60;
+        ctx.shadowBlur = 6;
+        for (let i = 0; i < 3; i++) {
+          const a = now * 2.0 + (i / 3) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(r*0.30*Math.cos(a), r*0.30*Math.sin(a));
+          ctx.lineTo(r*0.58*Math.cos(a), r*0.58*Math.sin(a));
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
         break;
       }
       default: {
-        // 기본 포신
-        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
-        break;
+        ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(0, 0, r*0.36, 0, Math.PI*2); ctx.fill();
       }
     }
     ctx.shadowBlur = 0;
-
-    // 포신 상단 하이라이트 (3D 효과)
-    if (cfg.sp !== "fork" && cfg.sp !== "dish" && cfg.sp !== "double" && cfg.sp !== "triple") {
-      ctx.save();
-      ctx.globalAlpha = 0.28;
-      ctx.strokeStyle = "rgba(255,255,255,0.85)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(bSx + bL * 0.08, -bW * 0.26);
-      ctx.lineTo(bSx + bL * 0.82, -bW * 0.26);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 터렛 헤드 중심 LED 점
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.shadowColor = cfg.barrel; ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.arc(0, 0, turretR * 0.25, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-
-    ctx.restore(); // aimAngle 해제
-    ctx.restore(); // translate 해제
+    ctx.lineCap = "butt";
   }
 
   function drawEnemies() { for (const en of state.enemies) drawEnemy(en); }
