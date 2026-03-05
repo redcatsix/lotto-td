@@ -1970,17 +1970,17 @@ export async function initEngine() {
   function drawBackground() {
     ctx.save();
 
-    // 미묘한 배경 그라데이션 오버레이
+    // 배경 오버레이 (보라-파랑 그라데이션, Random Dice 게임보드 분위기)
     const g = ctx.createLinearGradient(0, 0, logical.w, logical.h);
-    g.addColorStop(0, "rgba(11,42,90,0.06)");
+    g.addColorStop(0, "rgba(30,10,70,0.07)");
     g.addColorStop(0.5, "rgba(0,0,0,0)");
-    g.addColorStop(1, "rgba(42,11,90,0.06)");
+    g.addColorStop(1, "rgba(10,30,70,0.07)");
     ctx.fillStyle = g; ctx.fillRect(0, 0, logical.w, logical.h);
 
-    // 서킷/도트 그리드 (기존보다 더 세련되게)
-    const step = 38;
-    ctx.globalAlpha = 0.055;
-    ctx.strokeStyle = "rgba(116,192,252,0.60)";
+    // 게임보드 격자 (보라빛 톤, 더 게임다운 느낌)
+    const step = 40;
+    ctx.globalAlpha = 0.05;
+    ctx.strokeStyle = "rgba(180,150,255,0.65)";
     ctx.lineWidth = 0.5;
     for (let x = 0; x <= logical.w; x += step) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, logical.h); ctx.stroke();
@@ -1988,32 +1988,32 @@ export async function initEngine() {
     for (let y = 0; y <= logical.h; y += step) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(logical.w, y); ctx.stroke();
     }
-    // 교차점 도트
-    ctx.globalAlpha = 0.10;
-    ctx.fillStyle = "rgba(116,192,252,0.80)";
+    // 교차점 다이아몬드 도트
+    ctx.globalAlpha = 0.11;
+    ctx.fillStyle = "rgba(180,150,255,0.85)";
     for (let x = 0; x <= logical.w; x += step) {
       for (let y = 0; y <= logical.h; y += step) {
-        ctx.beginPath(); ctx.arc(x, y, 1.0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, 1.1, 0, Math.PI * 2); ctx.fill();
       }
     }
 
-    // 앰비언트 파티클 (떠다니는 빛 점들)
+    // 앰비언트 파티클
     const now = perfNow() / 1000;
     for (const p of state.bgParticles) {
       const pulse = 0.5 + 0.5 * Math.sin(p.pulse + now * p.pulseSpeed);
       ctx.globalAlpha = p.a * (0.5 + 0.5 * pulse);
       ctx.fillStyle = p.color;
       ctx.shadowColor = p.color;
-      ctx.shadowBlur = 4 * pulse;
+      ctx.shadowBlur = 5 * pulse;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.7 + 0.3 * pulse), 0, Math.PI * 2); ctx.fill();
     }
     ctx.shadowBlur = 0;
 
-    // 비넷 효과 (테두리 어둡게)
+    // 비넷 (테두리 어둡게)
     ctx.globalAlpha = 1;
     const vgn = ctx.createRadialGradient(logical.w/2, logical.h/2, logical.w*0.25, logical.w/2, logical.h/2, logical.w*0.72);
     vgn.addColorStop(0, "rgba(0,0,0,0)");
-    vgn.addColorStop(1, "rgba(0,0,0,0.22)");
+    vgn.addColorStop(1, "rgba(0,0,0,0.25)");
     ctx.fillStyle = vgn; ctx.fillRect(0, 0, logical.w, logical.h);
 
     ctx.restore();
@@ -2030,28 +2030,54 @@ export async function initEngine() {
     const wtColor = (wtInfo && wt!==WAVE_TYPE.NORMAL) ? wtInfo.color : null;
 
     for (const cell of b.cells) {
-      const isCore=cell.r===2&&cell.c===2;
-      const key=cellKey(cell.r,cell.c);
-      const hk=hotKindForKey(key);
+      const isCore = cell.r === 2 && cell.c === 2;
+      const key = cellKey(cell.r, cell.c);
+      const hk = hotKindForKey(key);
       ctx.save();
-      ctx.fillStyle=isCore?"rgba(255,107,107,0.08)":"rgba(255,255,255,0.05)";
-      roundRect(ctx,cell.x,cell.y,cell.w,cell.h,14); ctx.fill();
+
+      // 기본 타일 (좌상단 미묘한 밝기 + 둥근 사각형)
+      const tileFill = isCore ? "rgba(255,107,107,0.10)" : "rgba(255,255,255,0.045)";
+      ctx.fillStyle = tileFill;
+      roundRect(ctx, cell.x, cell.y, cell.w, cell.h, 14); ctx.fill();
+      // 타일 좌상단 하이라이트 (Random Dice 타일 질감)
+      const tileSheen = ctx.createLinearGradient(cell.x, cell.y, cell.x + cell.w * 0.5, cell.y + cell.h * 0.5);
+      tileSheen.addColorStop(0, isCore ? "rgba(255,150,150,0.07)" : "rgba(255,255,255,0.07)");
+      tileSheen.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = tileSheen;
+      roundRect(ctx, cell.x, cell.y, cell.w, cell.h, 14); ctx.fill();
+
       if (hk) {
-        const pulse=0.55+0.45*Math.sin(perfNow()/220+(cell.r*7+cell.c));
-        const a=0.10+0.08*pulse;
-        ctx.fillStyle=hk==="ASPD"?`rgba(116,192,252,${a})`:`rgba(255,212,59,${a})`;
-        roundRect(ctx,cell.x+2,cell.y+2,cell.w-4,cell.h-4,12); ctx.fill();
-        ctx.lineWidth=2; ctx.strokeStyle=hk==="ASPD"?"rgba(116,192,252,0.35)":"rgba(255,212,59,0.35)"; ctx.stroke();
-        ctx.save(); ctx.globalAlpha=0.88;
-        ctx.fillStyle=hk==="ASPD"?"rgba(116,192,252,0.95)":"rgba(255,212,59,0.95)";
-        ctx.font="900 11px ui-sans-serif, system-ui"; ctx.textAlign="left"; ctx.textBaseline="top";
-        ctx.fillText("HOT",cell.x+8,cell.y+6);
-        ctx.font="800 10px ui-sans-serif, system-ui";
-        const ha=state.hotAspdBonus??HOTZONE_ASPD_BONUS_BASE, hc=state.hotCritBonus??HOTZONE_CRIT_BONUS_BASE;
-        ctx.fillText(hk==="ASPD"?`공속+${Math.round(ha*100)}%`:`치명+${Math.round(hc*100)}%p`,cell.x+8,cell.y+20);
+        const pulse = 0.55 + 0.45 * Math.sin(perfNow() / 220 + (cell.r * 7 + cell.c));
+        const isAspd = hk === "ASPD";
+        const hotRgb = isAspd ? "116,192,252" : "255,212,59";
+        const a = 0.12 + 0.09 * pulse;
+
+        // HOT ZONE 배경 글로우
+        ctx.fillStyle = `rgba(${hotRgb},${a})`;
+        roundRect(ctx, cell.x + 2, cell.y + 2, cell.w - 4, cell.h - 4, 12); ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(${hotRgb},${0.28 + 0.18 * pulse})`;
+        ctx.shadowColor = `rgba(${hotRgb},0.55)`;
+        ctx.shadowBlur = 8 * pulse;
+        roundRect(ctx, cell.x + 2, cell.y + 2, cell.w - 4, cell.h - 4, 12); ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // 아이콘 + 보너스 텍스트
+        ctx.save(); ctx.globalAlpha = 0.92;
+        ctx.textAlign = "left"; ctx.textBaseline = "top";
+        // 아이콘 (공속: ⚡, 치명: ✦)
+        ctx.fillStyle = `rgba(${hotRgb},0.98)`;
+        ctx.font = "900 13px ui-sans-serif, system-ui";
+        ctx.fillText(isAspd ? "⚡" : "✦", cell.x + 7, cell.y + 5);
+        // 보너스 수치
+        ctx.font = "800 10px ui-sans-serif, system-ui";
+        const ha = state.hotAspdBonus ?? HOTZONE_ASPD_BONUS_BASE;
+        const hc = state.hotCritBonus ?? HOTZONE_CRIT_BONUS_BASE;
+        ctx.fillText(isAspd ? `+${Math.round(ha * 100)}%` : `+${Math.round(hc * 100)}%p`, cell.x + 7, cell.y + 21);
         ctx.restore();
       }
-      ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=1; ctx.stroke();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1; ctx.stroke();
       ctx.restore();
     }
 
@@ -2173,149 +2199,333 @@ export async function initEngine() {
   }
 
   function drawUnit(u, selected) {
-    const col=rarityColor(u.itemRarity); const cell=state.board.cell; const platformR=cell*0.20;
-    const key=cellKey(u.r,u.c); const hk=hotKindForKey(key); const hotMul=hotMulForKey(key);
-    ctx.save(); ctx.translate(snap(u.x),snap(u.y));
-    const kick=u.kick||0; const kickScale=1+kick*0.25;
+    const col    = rarityColor(u.itemRarity);
+    const cell   = state.board.cell;
+    const baseR  = cell * 0.36;  // drawTurret 기지 반지름
+    const topOff = cell * 0.05;  // drawTurret translate(0, -topOff)
+    const key    = cellKey(u.r, u.c);
+    const hk     = hotKindForKey(key);
+    const hotMul = hotMulForKey(key);
+
+    ctx.save(); ctx.translate(snap(u.x), snap(u.y));
+    const kick = u.kick || 0;
+    const kickScale = 1 + kick * 0.22;
+
+    // 선택: 사거리 원 + 원형 선택 링 (kick 전)
     if (selected) {
-      const auraRangeMul=u.auraOn?(u.auraRangeMul??1.0):1.0;
-      const rangePx=(u.rangeCells||0)*state.board.pxPerCell*auraRangeMul;
-      if (rangePx>4) {
-        ctx.save(); ctx.globalAlpha=1; ctx.beginPath(); ctx.arc(0,0,rangePx,0,Math.PI*2);
-        ctx.fillStyle="rgba(99, 230, 190, 0.12)"; ctx.fill();
-        ctx.lineWidth=2; ctx.strokeStyle="rgba(99, 230, 190, 0.26)"; ctx.stroke(); ctx.restore();
+      const auraRangeMul = u.auraOn ? (u.auraRangeMul ?? 1.0) : 1.0;
+      const rangePx = (u.rangeCells || 0) * state.board.pxPerCell * auraRangeMul;
+      if (rangePx > 4) {
+        ctx.save(); ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(0, 0, rangePx, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(99,230,190,0.12)"; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = "rgba(99,230,190,0.26)"; ctx.stroke();
+        ctx.restore();
       }
-      ctx.beginPath(); ctx.arc(0,0,platformR*2.6,0,Math.PI*2); ctx.strokeStyle="rgba(255,255,255,0.16)"; ctx.lineWidth=2; ctx.stroke();
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.70)";
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = "rgba(255,255,255,0.85)";
+      ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.arc(0, -topOff, baseR * 1.38, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
     }
-    if (kickScale!==1) ctx.scale(kickScale,kickScale);
-    ctx.shadowColor=col; ctx.shadowBlur=selected?14:10;
-    ctx.fillStyle="rgba(0,0,0,0.20)"; ctx.beginPath(); ctx.arc(0,platformR*0.25,platformR*1.26,0,Math.PI*2); ctx.fill();
-    if (hk) {
-      const pulse=0.55+0.45*Math.sin(perfNow()/210+(u.r*3+u.c));
-      ctx.shadowBlur=0; ctx.globalAlpha=0.9;
-      ctx.fillStyle=hk==="ASPD"?`rgba(116,192,252,${0.45+0.25*pulse})`:`rgba(255,212,59,${0.45+0.25*pulse})`;
-      ctx.fillRect(-platformR*0.95,platformR*0.65,platformR*0.34,platformR*0.34);
-      if (hotMul>1) { ctx.fillStyle="rgba(255,255,255,0.55)"; ctx.fillRect(-platformR*0.52,platformR*0.65,platformR*0.34,platformR*0.34); }
-    }
-    ctx.globalAlpha=1; ctx.shadowBlur=0; ctx.lineWidth=2; ctx.strokeStyle="rgba(255,255,255,0.22)";
-    ctx.beginPath(); ctx.arc(0,platformR*0.25,platformR*1.26,0,Math.PI*2); ctx.stroke();
+
+    if (kickScale !== 1) ctx.scale(kickScale, kickScale);
+
+    // 오라 링 (지원 타워)
     if (u.auraOn) {
-      ctx.save(); ctx.shadowColor="rgba(99,230,190,0.20)"; ctx.shadowBlur=12; ctx.globalAlpha=1;
-      ctx.strokeStyle="rgba(99,230,190,0.32)"; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(0,platformR*0.25,platformR*1.52,0,Math.PI*2); ctx.stroke(); ctx.restore();
+      ctx.save();
+      ctx.shadowColor = "rgba(99,230,190,0.20)"; ctx.shadowBlur = 12;
+      ctx.strokeStyle = "rgba(99,230,190,0.32)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, baseR * 1.65, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
     }
-    drawTurret(u,col);
-    // 레어리티별 플랫폼 글로우 링
+
+    // HOT ZONE 배지 (좌하단 소형 박스)
+    if (hk) {
+      const pulse = 0.55 + 0.45 * Math.sin(perfNow() / 210 + (u.r * 3 + u.c));
+      ctx.save(); ctx.globalAlpha = 0.90;
+      ctx.fillStyle = hk === "ASPD" ? `rgba(116,192,252,${0.50+0.30*pulse})` : `rgba(255,212,59,${0.50+0.30*pulse})`;
+      ctx.fillRect(-baseR * 1.02, baseR * 0.62, baseR * 0.38, baseR * 0.38);
+      if (hotMul > 1) { ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.fillRect(-baseR * 0.56, baseR * 0.62, baseR * 0.38, baseR * 0.38); }
+      ctx.restore();
+    }
+
+    // ✦ 포탑 본체
+    drawTurret(u, col);
+
+    // 레어리티 글로우 링 (원형)
     const rrank = rarityRank(u.itemRarity);
     if (rrank >= 1) {
       const rarPulse = 0.55 + 0.45 * Math.sin(perfNow() / (400 - rrank * 35) + (u.r * 7 + u.c));
       const ringAlpha = [0, 0.22, 0.30, 0.38, 0.46, 0.56][rrank] ?? 0.22;
-      const ringBlur = [0, 6, 9, 13, 17, 22][rrank] ?? 6;
+      const ringBlur  = [0, 6, 9, 13, 17, 22][rrank] ?? 6;
+      const ringR = baseR * (1.38 + rrank * 0.10);
       ctx.save();
       ctx.globalAlpha = ringAlpha * (0.8 + 0.2 * rarPulse);
       ctx.strokeStyle = col;
       ctx.lineWidth = [0, 1.5, 2, 2.5, 3, 3.5][rrank] ?? 1.5;
       ctx.shadowColor = col;
       ctx.shadowBlur = ringBlur * rarPulse;
-      ctx.beginPath(); ctx.arc(0, platformR * 0.25, platformR * 1.52, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -topOff, ringR, 0, Math.PI * 2); ctx.stroke();
       if (rrank >= 4) {
-        // 고유/신화: 추가 외곽 링
         ctx.globalAlpha = (ringAlpha * 0.5) * (0.6 + 0.4 * rarPulse);
         ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(0, platformR * 0.25, platformR * 2.1, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -topOff, ringR * 1.24, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.restore();
     }
 
-    const barW=cell*0.60, barH=5, bx=-barW/2, by=-cell*0.34;
-    if (u.reloadT>0&&u.reloadTime>0) {
-      const p=clamp(1-u.reloadT/u.reloadTime,0,1);
-      ctx.save(); ctx.globalAlpha=0.95;
-      ctx.fillStyle="rgba(0,0,0,0.55)"; roundRect(ctx,bx,by,barW,barH,2); ctx.fill();
-      ctx.fillStyle="rgba(99,230,190,0.75)"; roundRect(ctx,bx,by,barW*p,barH,2); ctx.fill(); ctx.restore();
-    } else if (u.overheatT>0&&u.overheatCool>0) {
-      const p=clamp(1-u.overheatT/u.overheatCool,0,1);
-      ctx.save(); ctx.globalAlpha=0.95;
-      ctx.fillStyle="rgba(0,0,0,0.55)"; roundRect(ctx,bx,by,barW,barH,2); ctx.fill();
-      ctx.fillStyle="rgba(255, 170, 120, 0.70)"; roundRect(ctx,bx,by,barW*p,barH,2); ctx.fill(); ctx.restore();
+    // 리로드/과열 바 (포탑 위)
+    const barW = cell * 0.62, barH = 5, bx = -barW / 2, by = -baseR - topOff - 10;
+    if (u.reloadT > 0 && u.reloadTime > 0) {
+      const p = clamp(1 - u.reloadT / u.reloadTime, 0, 1);
+      ctx.save(); ctx.globalAlpha = 0.95;
+      ctx.fillStyle = "rgba(0,0,0,0.55)"; roundRect(ctx, bx, by, barW, barH, 2); ctx.fill();
+      ctx.fillStyle = "rgba(99,230,190,0.75)"; roundRect(ctx, bx, by, barW * p, barH, 2); ctx.fill(); ctx.restore();
+    } else if (u.overheatT > 0 && u.overheatCool > 0) {
+      const p = clamp(1 - u.overheatT / u.overheatCool, 0, 1);
+      ctx.save(); ctx.globalAlpha = 0.95;
+      ctx.fillStyle = "rgba(0,0,0,0.55)"; roundRect(ctx, bx, by, barW, barH, 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,170,120,0.70)"; roundRect(ctx, bx, by, barW * p, barH, 2); ctx.fill(); ctx.restore();
     }
     ctx.restore();
   }
 
-  function drawUnitGhost(u,x,y) {
-    const col=rarityColor(u.itemRarity); const cell=state.board.cell; const platformR=cell*0.20;
-    ctx.save(); ctx.globalAlpha=0.55; ctx.translate(snap(x),snap(y));
-    const rangePx=(u.rangeCells||0)*state.board.pxPerCell;
-    if (rangePx>4) {
-      ctx.beginPath(); ctx.arc(0,0,rangePx,0,Math.PI*2);
-      ctx.fillStyle="rgba(99, 230, 190, 0.10)"; ctx.fill();
-      ctx.lineWidth=2; ctx.strokeStyle="rgba(99, 230, 190, 0.22)"; ctx.stroke();
+  function drawUnitGhost(u, x, y) {
+    const col = rarityColor(u.itemRarity);
+    const rangePx = (u.rangeCells || 0) * state.board.pxPerCell;
+    ctx.save();
+    ctx.globalAlpha = 0.52;
+    ctx.translate(snap(x), snap(y));
+    if (rangePx > 4) {
+      ctx.beginPath(); ctx.arc(0, 0, rangePx, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(99,230,190,0.10)"; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = "rgba(99,230,190,0.22)"; ctx.stroke();
     }
-    ctx.beginPath(); ctx.arc(0,0,platformR*2.6,0,Math.PI*2); ctx.strokeStyle="rgba(255,255,255,0.22)"; ctx.lineWidth=2; ctx.stroke();
-    ctx.shadowColor=col; ctx.shadowBlur=10; ctx.fillStyle="rgba(0,0,0,0.18)";
-    ctx.beginPath(); ctx.arc(0,platformR*0.25,platformR*1.26,0,Math.PI*2); ctx.fill();
-    ctx.shadowBlur=0; ctx.lineWidth=2; ctx.strokeStyle="rgba(255,255,255,0.18)";
-    ctx.beginPath(); ctx.arc(0,platformR*0.25,platformR*1.26,0,Math.PI*2); ctx.stroke();
-    drawTurret(u,col); ctx.restore();
+    drawTurret(u, col);
+    ctx.restore();
   }
 
+  // ── Random Dice 스타일 주사위 포탑 ──────────────────────────
+  // ── Random Dice 컬러 컨셉 + 타워디펜스 터렛 형태 ────────────
   function drawTurret(u, accent) {
-    const cell=state.board.cell;
-    const gunmetal="rgba(26, 31, 38, 0.92)", gunmetal2="rgba(18, 22, 28, 0.92)";
-    const olive="rgba(56, 72, 56, 0.90)", olive2="rgba(44, 58, 44, 0.90)";
-    const outline="rgba(255,255,255,0.16)";
-    const baseR=cell*0.34, plateR=cell*0.24;
-    const led=(() => {
-      switch (u.type) {
-        case UNIT_TYPES.FROST: case UNIT_TYPES.TESLA: case UNIT_TYPES.SNIPER: return "rgba(99, 230, 190, 0.92)";
-        case UNIT_TYPES.BARRAGE: case UNIT_TYPES.CANNON: case UNIT_TYPES.MORTAR: case UNIT_TYPES.GIANTSLAYER: return "rgba(255, 160, 66, 0.92)";
-        case UNIT_TYPES.SHOTGUN: case UNIT_TYPES.BERSERKER: return "rgba(255, 107, 107, 0.92)";
-        default: return "rgba(116, 192, 252, 0.90)";
-      }
-    })();
-    function hexPath(r,rot=0){ctx.beginPath();for(let i=0;i<6;i++){const a=rot+Math.PI/6+i*(Math.PI/3);const x=Math.cos(a)*r,y=Math.sin(a)*r;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.closePath();}
-    ctx.save(); ctx.translate(0,-cell*0.05);
-    ctx.fillStyle="rgba(0,0,0,0.22)"; ctx.beginPath(); ctx.ellipse(0,baseR*0.62,baseR*1.05,baseR*0.62,0,0,Math.PI*2); ctx.fill();
-    hexPath(baseR); ctx.fillStyle=gunmetal; ctx.strokeStyle=outline; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
-    ctx.fillStyle=gunmetal2;
-    roundRect(ctx,-baseR*1.05,-baseR*0.38,baseR*0.38,baseR*0.96,baseR*0.16); ctx.fill();
-    roundRect(ctx,baseR*0.67,-baseR*0.38,baseR*0.38,baseR*0.96,baseR*0.16); ctx.fill();
-    hexPath(plateR); ctx.fillStyle=olive; ctx.fill();
-    ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(-plateR*0.65,0); ctx.lineTo(plateR*0.65,0); ctx.moveTo(0,-plateR*0.65); ctx.lineTo(0,plateR*0.65); ctx.stroke();
-    ctx.fillStyle=olive2; ctx.beginPath(); ctx.arc(0,0,plateR*0.58,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.fillStyle="rgba(255,255,255,0.10)";
-    for (let i=0;i<6;i++){const a=Math.PI/6+i*(Math.PI/3);const bx=Math.cos(a)*plateR*0.95,by=Math.sin(a)*plateR*0.95;ctx.beginPath();ctx.arc(bx,by,1.4,0,Math.PI*2);ctx.fill();}
-    ctx.save(); ctx.rotate(u.aimAngle||0);
-    const headR=plateR*0.54;
-    ctx.fillStyle=gunmetal2; ctx.beginPath(); ctx.arc(0,0,headR,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.save(); ctx.globalAlpha=0.22; ctx.strokeStyle=accent; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,headR*1.05,0,Math.PI*2); ctx.stroke(); ctx.restore();
-    function barrelCore(len,w){
-      ctx.fillStyle=gunmetal; roundRect(ctx,headR*0.10,-w*0.60,headR*0.55,w*1.20,w*0.35); ctx.fill();
-      ctx.fillStyle=gunmetal2; ctx.beginPath(); ctx.moveTo(headR*0.55,-w*0.50); ctx.lineTo(headR*0.55+len*0.86,-w*0.50); ctx.lineTo(headR*0.55+len,0); ctx.lineTo(headR*0.55+len*0.86,w*0.50); ctx.lineTo(headR*0.55,w*0.50); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(headR*0.65,-w*0.28); ctx.lineTo(headR*0.55+len*0.82,-w*0.28); ctx.stroke();
-      ctx.save(); ctx.shadowColor=accent; ctx.shadowBlur=7; ctx.fillStyle=accent; ctx.beginPath(); ctx.arc(headR*0.55+len*0.90,0,w*0.26,0,Math.PI*2); ctx.fill(); ctx.restore();
-    }
-    switch (u.type) {
-      case UNIT_TYPES.SNIPER: barrelCore(cell*0.60,cell*0.07); ctx.fillStyle=olive2; roundRect(ctx,headR*0.45,-cell*0.17,cell*0.24,cell*0.10,cell*0.04); ctx.fill(); break;
-      case UNIT_TYPES.GATLING: for(let i=-1;i<=1;i++){ctx.save();ctx.translate(0,i*cell*0.07*1.05);barrelCore(cell*0.36,cell*0.07);ctx.restore();} break;
-      case UNIT_TYPES.SHOTGUN: ctx.save();ctx.translate(0,-cell*0.10*0.42);barrelCore(cell*0.30,cell*0.10*0.75);ctx.restore();ctx.save();ctx.translate(0,cell*0.10*0.42);barrelCore(cell*0.30,cell*0.10*0.75);ctx.restore(); break;
-      case UNIT_TYPES.MORTAR: barrelCore(cell*0.28,cell*0.14); ctx.save();ctx.globalAlpha=0.35;ctx.fillStyle="rgba(0,0,0,0.55)";ctx.beginPath();ctx.arc(headR*0.55+cell*0.28*0.86,0,cell*0.14*0.38,0,Math.PI*2);ctx.fill();ctx.restore(); break;
-      case UNIT_TYPES.TESLA: barrelCore(cell*0.26,cell*0.10); ctx.strokeStyle=led;ctx.lineWidth=2;ctx.globalAlpha=0.55;ctx.beginPath();ctx.moveTo(headR*0.55+cell*0.26*0.62,-cell*0.10*0.55);ctx.lineTo(headR*0.55+cell*0.26*0.86,-cell*0.10*0.95);ctx.moveTo(headR*0.55+cell*0.26*0.62,cell*0.10*0.55);ctx.lineTo(headR*0.55+cell*0.26*0.86,cell*0.10*0.95);ctx.stroke();ctx.globalAlpha=1; break;
-      case UNIT_TYPES.FROST: barrelCore(cell*0.34,cell*0.10); ctx.strokeStyle="rgba(99,230,190,0.40)";ctx.lineWidth=1.5;ctx.beginPath();for(let i=-2;i<=2;i++){ctx.moveTo(headR*0.55+cell*0.34*0.25,i*cell*0.10*0.22);ctx.lineTo(headR*0.55+cell*0.34*0.58,i*cell*0.10*0.22);}ctx.stroke(); break;
-      case UNIT_TYPES.RADAR:
-        ctx.fillStyle=gunmetal2; ctx.beginPath(); ctx.arc(headR*0.55,0,headR*0.42,0,Math.PI*2); ctx.fill();
-        ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(headR*0.55,0,headR*0.42,0,Math.PI*2); ctx.stroke();
-        ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=1.0;
-        for (let a=-0.85;a<=0.85;a+=0.42){ctx.beginPath();ctx.moveTo(headR*0.55-headR*0.34,a*headR*0.32);ctx.lineTo(headR*0.55+headR*0.34,a*headR*0.32);ctx.stroke();}
-        ctx.strokeStyle="rgba(255,255,255,0.18)";ctx.lineWidth=2.0;ctx.beginPath();ctx.moveTo(-headR*0.10,-headR*0.40);ctx.lineTo(-headR*0.10,-headR*0.60);ctx.stroke();
-        ctx.save();ctx.shadowColor=accent;ctx.shadowBlur=8;ctx.fillStyle=accent;ctx.beginPath();ctx.arc(-headR*0.10,-headR*0.62,2.4,0,Math.PI*2);ctx.fill();ctx.restore();
+    const cell = state.board.cell;
+    const baseR   = cell * 0.36; // 기지 반지름
+    const turretR = cell * 0.22; // 포탑 헤드 반지름
+
+    // 타입별: base 색(어두운 포화색), barrel 색(밝은 포화색), 포신 형태
+    const TCFG = {
+      SNIPER:      { base: "#1a5c38", barrel: "#51cf66", bL: 0.48, bW: 0.062, sp: "scope"   },
+      SHOTGUN:     { base: "#7c1a1a", barrel: "#ff6b6b", bL: 0.28, bW: 0.092, sp: "double"  },
+      FROST:       { base: "#1a3870", barrel: "#74c0fc", bL: 0.34, bW: 0.082, sp: "crystal" },
+      TESLA:       { base: "#3a2c00", barrel: "#ffd43b", bL: 0.24, bW: 0.078, sp: "fork"    },
+      MORTAR:      { base: "#3a1a60", barrel: "#cc5de8", bL: 0.22, bW: 0.130, sp: "mortar"  },
+      BARRAGE:     { base: "#6a2e00", barrel: "#ffa94d", bL: 0.36, bW: 0.080, sp: null      },
+      CANNON:      { base: "#5c2800", barrel: "#fd7e14", bL: 0.38, bW: 0.118, sp: "cannon"  },
+      GATLING:     { base: "#7a3600", barrel: "#ff9240", bL: 0.28, bW: 0.055, sp: "triple"  },
+      BERSERKER:   { base: "#5a0000", barrel: "#ff0000", bL: 0.34, bW: 0.088, sp: null      },
+      EXECUTIONER: { base: "#380808", barrel: "#e03131", bL: 0.40, bW: 0.068, sp: null      },
+      GIANTSLAYER: { base: "#3e2600", barrel: "#ffd43b", bL: 0.38, bW: 0.138, sp: "heavy"   },
+      PINBALL:     { base: "#003848", barrel: "#22b8cf", bL: 0.24, bW: 0.068, sp: "ball"    },
+      RADAR:       { base: "#200050", barrel: "#b197fc", bL: 0.16, bW: 0.052, sp: "dish"    },
+    };
+    const cfg = TCFG[u.type] ?? { base: "#1a2a4a", barrel: accent, bL: 0.38, bW: 0.088, sp: null };
+    const bL  = cell * cfg.bL;  // 포신 길이
+    const bW  = cell * cfg.bW;  // 포신 너비
+    const bSx = turretR * 0.72; // 포신 시작 X (터렛 헤드 가장자리)
+
+    ctx.save();
+    ctx.translate(0, -cell * 0.05);
+
+    // ① 지면 그림자 (입체감)
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = "rgba(0,0,0,1)";
+    ctx.beginPath(); ctx.ellipse(1, baseR * 0.52, baseR * 1.08, baseR * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // ② 기지 (원형, 컬러 + 셀-쉐이드)
+    ctx.fillStyle = cfg.base;
+    ctx.shadowColor = cfg.barrel;
+    ctx.shadowBlur = 13;
+    ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // 셀-쉐이드 오버레이 (좌상단 밝음 → 우하단 어두움)
+    const cel = ctx.createRadialGradient(-baseR * 0.38, -baseR * 0.38, 0, baseR * 0.45, baseR * 0.45, baseR * 1.6);
+    cel.addColorStop(0, "rgba(255,255,255,0.30)");
+    cel.addColorStop(0.42, "rgba(255,255,255,0)");
+    cel.addColorStop(1, "rgba(0,0,0,0.38)");
+    ctx.fillStyle = cel;
+    ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
+    // 기지 테두리 — 굵은 컬러 아웃라인 (Random Dice 핵심 스타일)
+    ctx.strokeStyle = cfg.barrel;
+    ctx.lineWidth = 2.8;
+    ctx.shadowColor = cfg.barrel;
+    ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0;
+    // 기지 내부 장식 링
+    ctx.strokeStyle = "rgba(255,255,255,0.13)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, baseR * 0.60, 0, Math.PI * 2); ctx.stroke();
+
+    // ③ 포탑 헤드 + 포신 (aimAngle 기준 회전)
+    ctx.save();
+    ctx.rotate(u.aimAngle || 0);
+
+    // 터렛 헤드 (셀-쉐이드)
+    ctx.fillStyle = cfg.base;
+    ctx.beginPath(); ctx.arc(0, 0, turretR, 0, Math.PI * 2); ctx.fill();
+    const tCel = ctx.createRadialGradient(-turretR * 0.32, -turretR * 0.32, 0, turretR * 0.42, turretR * 0.42, turretR * 1.45);
+    tCel.addColorStop(0, "rgba(255,255,255,0.35)");
+    tCel.addColorStop(0.42, "rgba(255,255,255,0)");
+    tCel.addColorStop(1, "rgba(0,0,0,0.42)");
+    ctx.fillStyle = tCel;
+    ctx.beginPath(); ctx.arc(0, 0, turretR, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = cfg.barrel;
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = cfg.barrel;
+    ctx.shadowBlur = 7;
+    ctx.beginPath(); ctx.arc(0, 0, turretR, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 포신 공통 스타일
+    ctx.fillStyle = cfg.barrel;
+    ctx.shadowColor = cfg.barrel;
+    ctx.shadowBlur = 8;
+
+    // 포신 타입별 렌더링
+    switch (cfg.sp) {
+      case "double": {
+        // 산탄총: 위아래 두 포신
+        const dy = bW * 0.88;
+        for (const off of [-dy, dy]) {
+          ctx.save(); ctx.translate(0, off);
+          roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+          ctx.restore();
+        }
         break;
-      default: barrelCore(cell*0.42,cell*0.10); break;
+      }
+      case "triple": {
+        // 개틀링: 세 포신
+        for (const off of [-bW * 1.08, 0, bW * 1.08]) {
+          ctx.save(); ctx.translate(0, off);
+          roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+          ctx.restore();
+        }
+        break;
+      }
+      case "scope": {
+        // 저격: 긴 포신 + 조준경
+        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(0,0,0,0.48)";
+        roundRect(ctx, bSx + bL * 0.36, -bW * 1.18, bL * 0.25, bW * 0.78, bW * 0.2); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.32)"; ctx.lineWidth = 1;
+        roundRect(ctx, bSx + bL * 0.36, -bW * 1.18, bL * 0.25, bW * 0.78, bW * 0.2); ctx.stroke();
+        break;
+      }
+      case "fork": {
+        // 테슬라: 포신 + Y자 전기 포크
+        roundRect(ctx, bSx, -bW * 0.5, bL * 0.60, bW, bW * 0.4); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.save();
+        ctx.strokeStyle = cfg.barrel;
+        ctx.lineCap = "round";
+        ctx.lineWidth = bW * 1.35;
+        const fx = bSx + bL * 0.56;
+        ctx.beginPath(); ctx.moveTo(fx, 0); ctx.lineTo(fx + bL * 0.40, -bW * 1.65); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(fx, 0); ctx.lineTo(fx + bL * 0.40, bW * 1.65); ctx.stroke();
+        ctx.restore();
+        break;
+      }
+      case "crystal": {
+        // 프로스트: 포신 + 아이스 크리스탈 끝
+        roundRect(ctx, bSx, -bW * 0.5, bL * 0.70, bW, bW * 0.4); ctx.fill();
+        const cx2 = bSx + bL * 0.68;
+        ctx.beginPath();
+        ctx.moveTo(cx2, -bW * 0.92);
+        ctx.lineTo(cx2 + bL * 0.24, 0);
+        ctx.lineTo(cx2, bW * 0.92);
+        ctx.lineTo(cx2 - bW * 0.28, 0);
+        ctx.closePath(); ctx.fill();
+        break;
+      }
+      case "mortar": {
+        // 모르타르: 짧고 넓은 포신, 위로 기울임 (박격포)
+        ctx.save(); ctx.rotate(-Math.PI / 5.5);
+        roundRect(ctx, turretR * 0.68, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+        ctx.beginPath(); ctx.arc(turretR * 0.68 + bL, 0, bW * 0.56, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        break;
+      }
+      case "cannon": {
+        // 캐논: 두꺼운 포신 + 밴드 장식 + 둥근 포구
+        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+        ctx.beginPath(); ctx.arc(bSx + bL, 0, bW * 0.50, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(0,0,0,0.30)";
+        for (let t = 0.26; t < 0.94; t += 0.25) {
+          roundRect(ctx, bSx + bL * t, -bW * 0.5, bW * 0.52, bW, 1); ctx.fill();
+        }
+        break;
+      }
+      case "heavy": {
+        // 자이언트슬레이어: 넓고 짧은 중포 + 둥근 포구
+        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+        ctx.beginPath(); ctx.arc(bSx + bL, 0, bW * 0.62, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case "ball": {
+        // 핀볼: 짧은 포신 + 구형 발사구
+        roundRect(ctx, bSx, -bW * 0.5, bL * 0.62, bW, bW * 0.4); ctx.fill();
+        ctx.beginPath(); ctx.arc(bSx + bL * 0.62, 0, bW * 0.92, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case "dish": {
+        // 레이더: 짧은 마스트 + 위성 접시
+        roundRect(ctx, bSx, -bW * 0.44, bL * 0.42, bW * 0.75, bW * 0.3); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.save();
+        ctx.strokeStyle = cfg.barrel;
+        ctx.lineWidth = bW * 0.78;
+        ctx.lineCap = "butt";
+        const dx = bSx + bL * 0.44;
+        ctx.beginPath(); ctx.arc(dx, 0, bW * 1.32, -Math.PI * 0.54, Math.PI * 0.54); ctx.stroke();
+        ctx.restore();
+        break;
+      }
+      default: {
+        // 기본 포신
+        roundRect(ctx, bSx, -bW * 0.5, bL, bW, bW * 0.4); ctx.fill();
+        break;
+      }
     }
-    ctx.restore(); ctx.restore();
+    ctx.shadowBlur = 0;
+
+    // 포신 상단 하이라이트 (3D 효과)
+    if (cfg.sp !== "fork" && cfg.sp !== "dish" && cfg.sp !== "double" && cfg.sp !== "triple") {
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bSx + bL * 0.08, -bW * 0.26);
+      ctx.lineTo(bSx + bL * 0.82, -bW * 0.26);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 터렛 헤드 중심 LED 점
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.shadowColor = cfg.barrel; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(0, 0, turretR * 0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.restore(); // aimAngle 해제
+    ctx.restore(); // translate 해제
   }
 
   function drawEnemies() { for (const en of state.enemies) drawEnemy(en); }
