@@ -2354,6 +2354,116 @@ export async function initEngine() {
     ctx.beginPath(); ctx.ellipse(R*0.10, R*0.65, R*1.20, R*0.36, 0, 0, Math.PI*2); ctx.fill();
     ctx.restore();
 
+    // ① 바닥 마법진 (레어리티 구분 — 타워 아래에 그려짐)
+    if (rrank >= 1) {
+      const rc = rarityColor(u.itemRarity);
+      ctx.save();
+      ctx.shadowColor = rc;
+
+      // 공통: 기본 글로우 링 (항상 존재)
+      const basePulse = 0.55 + 0.45 * Math.sin(now * 1.8);
+      ctx.strokeStyle = rc;
+      ctx.lineWidth = 2.2;
+      ctx.globalAlpha = ([0,0.38,0.50,0.58,0.65,0.72][rrank] ?? 0.38) * (rrank === 1 ? basePulse : 1);
+      ctx.shadowBlur = [0,10,14,16,18,22][rrank] ?? 10;
+      ctx.beginPath(); ctx.arc(0, 0, R * 1.52, 0, Math.PI*2); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+      if (rrank >= 2) {
+        // RARE: 회전 틱마크 16개 + 외부 점선 링
+        const tickRot = now * 0.55;
+        ctx.save(); ctx.rotate(tickRot);
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.5;
+        ctx.shadowColor = rc; ctx.shadowBlur = 8;
+        ctx.globalAlpha = 0.48;
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2;
+          const inner = R * (i % 2 === 0 ? 1.52 : 1.60);
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a)*inner, Math.sin(a)*inner);
+          ctx.lineTo(Math.cos(a)*(inner + R*0.12), Math.sin(a)*(inner + R*0.12));
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 0.38;
+        ctx.lineWidth = 1.2; ctx.shadowBlur = 6;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.arc(0, 0, R * 1.88, 0, Math.PI*2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      }
+
+      if (rrank >= 3) {
+        // LEGENDARY: 6각 별 (헥사그램)
+        const starRot = now * 0.42;
+        ctx.save(); ctx.rotate(starRot);
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.8;
+        ctx.shadowColor = rc; ctx.shadowBlur = 14;
+        ctx.globalAlpha = 0.62;
+        ctx.beginPath();
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2;
+          const rad = i % 2 === 0 ? R * 1.80 : R * 0.95;
+          i === 0 ? ctx.moveTo(Math.cos(a)*rad, Math.sin(a)*rad)
+                  : ctx.lineTo(Math.cos(a)*rad, Math.sin(a)*rad);
+        }
+        ctx.closePath(); ctx.stroke();
+        ctx.restore();
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      }
+
+      if (rrank >= 4) {
+        // UNIQUE: 역방향 팔각형 + 중간 강조 링
+        const octRot = -now * 0.65;
+        ctx.save(); ctx.rotate(octRot);
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.5;
+        ctx.shadowColor = rc; ctx.shadowBlur = 16;
+        ctx.globalAlpha = 0.55;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          const rad = R * 2.10;
+          i === 0 ? ctx.moveTo(Math.cos(a)*rad, Math.sin(a)*rad)
+                  : ctx.lineTo(Math.cos(a)*rad, Math.sin(a)*rad);
+        }
+        ctx.closePath(); ctx.stroke();
+        ctx.restore();
+        // 보조 링
+        ctx.strokeStyle = rc; ctx.lineWidth = 2.0;
+        ctx.globalAlpha = 0.42; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(0, 0, R * 2.10, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      }
+
+      if (rrank >= 5) {
+        // MYTHIC: 12각 별 + 팔각 + 펄싱 오라 (풀 만다라)
+        const mythPulse = 0.55 + 0.45 * Math.sin(now * 2.8);
+        // 12각 별 (빠른 회전)
+        const mRot = now * 0.85;
+        ctx.save(); ctx.rotate(mRot);
+        ctx.strokeStyle = rc; ctx.lineWidth = 2.0;
+        ctx.shadowColor = rc; ctx.shadowBlur = 18;
+        ctx.globalAlpha = 0.70;
+        ctx.beginPath();
+        for (let i = 0; i < 24; i++) {
+          const a = (i / 24) * Math.PI * 2;
+          const rad = i % 2 === 0 ? R * 1.80 : R * 1.10;
+          i === 0 ? ctx.moveTo(Math.cos(a)*rad, Math.sin(a)*rad)
+                  : ctx.lineTo(Math.cos(a)*rad, Math.sin(a)*rad);
+        }
+        ctx.closePath(); ctx.stroke();
+        ctx.restore();
+        // 펄싱 오라 최외곽
+        ctx.strokeStyle = rc;
+        ctx.globalAlpha = (0.28 + 0.28 * mythPulse);
+        ctx.lineWidth = 3.5; ctx.shadowBlur = 26;
+        ctx.beginPath(); ctx.arc(0, 0, R * 2.52, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      }
+
+      ctx.restore();
+    }
+
     // ② 외벽 베이스 (어두운 외곽)
     ctx.fillStyle = hexAdj(cfg.stone, -45);
     ctx.shadowColor = cfg.acc; ctx.shadowBlur = 11;
@@ -2412,45 +2522,6 @@ export async function initEngine() {
     // 내부 링 장식
     ctx.strokeStyle = "rgba(255,255,255,0.09)"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(0, 0, iR*0.65, 0, Math.PI*2); ctx.stroke();
-
-    // ⑥ 레어리티 장식
-    if (rrank >= 1) {
-      if (rrank === 1) {
-        // MAGIC: 내부 마법 링
-        ctx.strokeStyle = cfg.acc; ctx.globalAlpha = 0.48;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(0, 0, R*0.72, 0, Math.PI*2); ctx.stroke();
-        ctx.globalAlpha = 1;
-      } else {
-        // RARE+: 성벽 위 발광 보석 도트
-        const dC = rrank >= 4 ? 6 : 4;
-        const rot = rrank >= 5 ? now * 1.2 : (rrank >= 4 ? now * 0.7 : 0);
-        ctx.fillStyle = cfg.acc; ctx.shadowColor = cfg.acc; ctx.shadowBlur = 12;
-        for (let i = 0; i < dC; i++) {
-          const a = rot + (i / dC) * Math.PI * 2;
-          const dr = R * 1.04;
-          ctx.beginPath(); ctx.arc(Math.cos(a)*dr, Math.sin(a)*dr, R*0.09, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.shadowBlur = 0;
-      }
-      if (rrank >= 3) {
-        // LEGENDARY+: 점선 마법진 링
-        ctx.strokeStyle = cfg.acc; ctx.globalAlpha = 0.50;
-        ctx.lineWidth = 1.5; ctx.shadowColor = cfg.acc; ctx.shadowBlur = 12;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath(); ctx.arc(0, 0, R*1.42, 0, Math.PI*2); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      }
-      if (rrank >= 5) {
-        // MYTHIC: 펄싱 오라
-        const pulse = 0.5 + 0.5 * Math.sin(now * 3.5);
-        ctx.strokeStyle = cfg.acc; ctx.globalAlpha = 0.28 + 0.28 * pulse;
-        ctx.lineWidth = 3; ctx.shadowColor = cfg.acc; ctx.shadowBlur = 22;
-        ctx.beginPath(); ctx.arc(0, 0, R*1.72, 0, Math.PI*2); ctx.stroke();
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      }
-    }
 
     // ⑦ 상단 장식 (타입별, aimAngle 회전)
     ctx.save();
