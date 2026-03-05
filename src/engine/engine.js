@@ -2257,28 +2257,6 @@ export async function initEngine() {
     // ✦ 포탑 본체
     drawTurret(u, col);
 
-    // 레어리티 글로우 링 (원형)
-    const rrank = rarityRank(u.itemRarity);
-    if (rrank >= 1) {
-      const rarPulse = 0.55 + 0.45 * Math.sin(perfNow() / (400 - rrank * 35) + (u.r * 7 + u.c));
-      const ringAlpha = [0, 0.22, 0.30, 0.38, 0.46, 0.56][rrank] ?? 0.22;
-      const ringBlur  = [0, 6, 9, 13, 17, 22][rrank] ?? 6;
-      const ringR = baseR * (1.38 + rrank * 0.10);
-      ctx.save();
-      ctx.globalAlpha = ringAlpha * (0.8 + 0.2 * rarPulse);
-      ctx.strokeStyle = col;
-      ctx.lineWidth = [0, 1.5, 2, 2.5, 3, 3.5][rrank] ?? 1.5;
-      ctx.shadowColor = col;
-      ctx.shadowBlur = ringBlur * rarPulse;
-      ctx.beginPath(); ctx.arc(0, -topOff, ringR, 0, Math.PI * 2); ctx.stroke();
-      if (rrank >= 4) {
-        ctx.globalAlpha = (ringAlpha * 0.5) * (0.6 + 0.4 * rarPulse);
-        ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(0, -topOff, ringR * 1.24, 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.restore();
-    }
-
     // 리로드/과열 바 (포탑 위)
     const barW = cell * 0.62, barH = 5, bx = -barW / 2, by = -baseR - topOff - 10;
     if (u.reloadT > 0 && u.reloadTime > 0) {
@@ -2355,55 +2333,59 @@ export async function initEngine() {
     ctx.restore();
 
     // ① 바닥 마법진 (레어리티 구분 — 타워 아래에 그려짐)
+    // mc = 셀 절반 - 여백 → 마법진이 절대로 인접 칸에 침범하지 않음
     if (rrank >= 1) {
       const rc = rarityColor(u.itemRarity);
+      const mc = cell * 0.44; // 최대 허용 반지름 (셀 절반=48px 보다 작음)
       ctx.save();
       ctx.shadowColor = rc;
 
-      // 공통: 기본 글로우 링 (항상 존재)
+      // 공통: 기본 링 (베이스)
       const basePulse = 0.55 + 0.45 * Math.sin(now * 1.8);
-      ctx.strokeStyle = rc;
-      ctx.lineWidth = 2.2;
-      ctx.globalAlpha = ([0,0.38,0.50,0.58,0.65,0.72][rrank] ?? 0.38) * (rrank === 1 ? basePulse : 1);
-      ctx.shadowBlur = [0,10,14,16,18,22][rrank] ?? 10;
-      ctx.beginPath(); ctx.arc(0, 0, R * 1.52, 0, Math.PI*2); ctx.stroke();
+      const r0 = mc * 0.62; // 기본 링 반지름
+      ctx.strokeStyle = rc; ctx.lineWidth = 2.0;
+      ctx.globalAlpha = ([0,0.40,0.52,0.60,0.66,0.74][rrank] ?? 0.40) * (rrank === 1 ? basePulse : 1);
+      ctx.shadowBlur = [0,10,13,15,17,20][rrank] ?? 10;
+      ctx.beginPath(); ctx.arc(0, 0, r0, 0, Math.PI*2); ctx.stroke();
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
       if (rrank >= 2) {
         // RARE: 회전 틱마크 16개 + 외부 점선 링
+        const r1 = mc * 0.80;
         const tickRot = now * 0.55;
         ctx.save(); ctx.rotate(tickRot);
-        ctx.strokeStyle = rc; ctx.lineWidth = 1.5;
-        ctx.shadowColor = rc; ctx.shadowBlur = 8;
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.4;
+        ctx.shadowColor = rc; ctx.shadowBlur = 7;
         ctx.globalAlpha = 0.48;
         for (let i = 0; i < 16; i++) {
           const a = (i / 16) * Math.PI * 2;
-          const inner = R * (i % 2 === 0 ? 1.52 : 1.60);
+          const ri = r0 * (i % 2 === 0 ? 1.0 : 1.06);
           ctx.beginPath();
-          ctx.moveTo(Math.cos(a)*inner, Math.sin(a)*inner);
-          ctx.lineTo(Math.cos(a)*(inner + R*0.12), Math.sin(a)*(inner + R*0.12));
+          ctx.moveTo(Math.cos(a)*ri, Math.sin(a)*ri);
+          ctx.lineTo(Math.cos(a)*(ri + mc*0.09), Math.sin(a)*(ri + mc*0.09));
           ctx.stroke();
         }
         ctx.restore();
-        ctx.globalAlpha = 0.38;
-        ctx.lineWidth = 1.2; ctx.shadowBlur = 6;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath(); ctx.arc(0, 0, R * 1.88, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 0.36;
+        ctx.lineWidth = 1.1; ctx.shadowBlur = 5;
+        ctx.setLineDash([4, 5]);
+        ctx.beginPath(); ctx.arc(0, 0, r1, 0, Math.PI*2); ctx.stroke();
         ctx.setLineDash([]);
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       }
 
       if (rrank >= 3) {
         // LEGENDARY: 6각 별 (헥사그램)
+        const r2 = mc * 0.78;
         const starRot = now * 0.42;
         ctx.save(); ctx.rotate(starRot);
-        ctx.strokeStyle = rc; ctx.lineWidth = 1.8;
-        ctx.shadowColor = rc; ctx.shadowBlur = 14;
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.6;
+        ctx.shadowColor = rc; ctx.shadowBlur = 12;
         ctx.globalAlpha = 0.62;
         ctx.beginPath();
         for (let i = 0; i < 12; i++) {
           const a = (i / 12) * Math.PI * 2;
-          const rad = i % 2 === 0 ? R * 1.80 : R * 0.95;
+          const rad = i % 2 === 0 ? r2 : r2 * 0.52;
           i === 0 ? ctx.moveTo(Math.cos(a)*rad, Math.sin(a)*rad)
                   : ctx.lineTo(Math.cos(a)*rad, Math.sin(a)*rad);
         }
@@ -2413,51 +2395,50 @@ export async function initEngine() {
       }
 
       if (rrank >= 4) {
-        // UNIQUE: 역방향 팔각형 + 중간 강조 링
-        const octRot = -now * 0.65;
+        // UNIQUE: 역방향 팔각형 + 보조 링
+        const r3 = mc * 0.92;
+        const octRot = -now * 0.60;
         ctx.save(); ctx.rotate(octRot);
-        ctx.strokeStyle = rc; ctx.lineWidth = 1.5;
-        ctx.shadowColor = rc; ctx.shadowBlur = 16;
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.4;
+        ctx.shadowColor = rc; ctx.shadowBlur = 14;
         ctx.globalAlpha = 0.55;
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
           const a = (i / 8) * Math.PI * 2;
-          const rad = R * 2.10;
-          i === 0 ? ctx.moveTo(Math.cos(a)*rad, Math.sin(a)*rad)
-                  : ctx.lineTo(Math.cos(a)*rad, Math.sin(a)*rad);
+          i === 0 ? ctx.moveTo(Math.cos(a)*r3, Math.sin(a)*r3)
+                  : ctx.lineTo(Math.cos(a)*r3, Math.sin(a)*r3);
         }
         ctx.closePath(); ctx.stroke();
         ctx.restore();
-        // 보조 링
-        ctx.strokeStyle = rc; ctx.lineWidth = 2.0;
-        ctx.globalAlpha = 0.42; ctx.shadowBlur = 10;
-        ctx.beginPath(); ctx.arc(0, 0, R * 2.10, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.6;
+        ctx.globalAlpha = 0.40; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(0, 0, r3, 0, Math.PI*2); ctx.stroke();
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       }
 
       if (rrank >= 5) {
-        // MYTHIC: 12각 별 + 팔각 + 펄싱 오라 (풀 만다라)
+        // MYTHIC: 12각 별 + 펄싱 최외곽 오라 (셀 경계 내)
         const mythPulse = 0.55 + 0.45 * Math.sin(now * 2.8);
-        // 12각 별 (빠른 회전)
-        const mRot = now * 0.85;
+        const r4 = mc * 0.78;
+        const mRot = now * 0.80;
         ctx.save(); ctx.rotate(mRot);
-        ctx.strokeStyle = rc; ctx.lineWidth = 2.0;
-        ctx.shadowColor = rc; ctx.shadowBlur = 18;
+        ctx.strokeStyle = rc; ctx.lineWidth = 1.8;
+        ctx.shadowColor = rc; ctx.shadowBlur = 16;
         ctx.globalAlpha = 0.70;
         ctx.beginPath();
         for (let i = 0; i < 24; i++) {
           const a = (i / 24) * Math.PI * 2;
-          const rad = i % 2 === 0 ? R * 1.80 : R * 1.10;
+          const rad = i % 2 === 0 ? r4 : r4 * 0.60;
           i === 0 ? ctx.moveTo(Math.cos(a)*rad, Math.sin(a)*rad)
                   : ctx.lineTo(Math.cos(a)*rad, Math.sin(a)*rad);
         }
         ctx.closePath(); ctx.stroke();
         ctx.restore();
-        // 펄싱 오라 최외곽
+        // 펄싱 오라 (mc가 최대치 — 셀 딱 맞음)
         ctx.strokeStyle = rc;
-        ctx.globalAlpha = (0.28 + 0.28 * mythPulse);
-        ctx.lineWidth = 3.5; ctx.shadowBlur = 26;
-        ctx.beginPath(); ctx.arc(0, 0, R * 2.52, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 0.28 + 0.26 * mythPulse;
+        ctx.lineWidth = 3.0; ctx.shadowBlur = 22;
+        ctx.beginPath(); ctx.arc(0, 0, mc, 0, Math.PI*2); ctx.stroke();
         ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       }
 
