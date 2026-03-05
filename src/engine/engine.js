@@ -1618,18 +1618,20 @@ export async function initEngine() {
     return { dmg:Math.max(1,Math.round(rawDmg*ai.mul)), rawDmg, isCrit, ricochet:ai.ricochet, armorMul:ai.mul };
   }
 
-  function addBeam(x1, y1, x2, y2, color, thick=2) {
+  function addBeam(x1, y1, x2, y2, color, thick=2, type=null) {
     if (!state.vfxEnabled) return;
-    state.beams.push({ x1, y1, x2, y2, t:0.12, color, thick });
+    const dur = (type==="MORTAR"||type==="CANNON") ? 0.26 : (type==="SNIPER") ? 0.14 : 0.18;
+    const beam = { x1, y1, x2, y2, t: dur, dur, prog: 0, color, thick, type };
+    if (type === "TESLA") {
+      beam.zigzag = Array.from({length: 6}, () => (Math.random()-0.5) * 14);
+    }
+    state.beams.push(beam);
+    // 머즐 플래시 퍼프
     const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
-    if (len>40) {
+    if (len>20) {
       const nx=dx/len, ny=dy/len;
-      const count = clamp(Math.floor(len/110),2,5);
-      for (let i=0; i<count; i++) {
-        const t=(i+1)/(count+1);
-        const px=x1+dx*t+(Math.random()-0.5)*4, py=y1+dy*t+(Math.random()-0.5)*4;
-        const life=0.16+Math.random()*0.10;
-        state.puffs.push({ x:px,y:py,vx:nx*(20+Math.random()*40)+(Math.random()-0.5)*10,vy:ny*(20+Math.random()*40)+(Math.random()-0.5)*10,t:life,life,g:0,fric:0.86,r:1.6+Math.random()*1.2,color });
+      for (let i=0; i<3; i++) {
+        state.puffs.push({ x:x1+nx*8,y:y1+ny*8,vx:nx*(30+Math.random()*30)+(Math.random()-0.5)*14,vy:ny*(30+Math.random()*30)+(Math.random()-0.5)*14,t:0.14+Math.random()*0.08,life:0.22,g:0,fric:0.82,r:1.8+Math.random()*1.4,color });
       }
     }
   }
@@ -1830,7 +1832,7 @@ export async function initEngine() {
       for (const en of targets) {
         const hit=calcDamage(u,en,{critAdd:mods.critAdd,dmgMul:mods.dmgMul,critChanceMul});
         const beamThick = [1.5,2,2.5,3,3.5,4.5][rarityRank(u.itemRarity)] ?? 2;
-        addBeam(u.x,u.y,en.x,en.y,rarityColor(u.itemRarity),hit.isCrit?beamThick*1.6:beamThick);
+        addBeam(u.x,u.y,en.x,en.y,rarityColor(u.itemRarity),hit.isCrit?beamThick*1.6:beamThick,u.type);
         u.kick=Math.max(u.kick||0,0.18);
         dealDamage(key,u,en,hit.dmg,hit.isCrit,en.x,en.y,{ricochet:hit.ricochet});
         if (u.blastRadiusCells>0&&u.splashMul>0) applySplash(key,u,en.x,en.y,en.id,hit.rawDmg);
@@ -1922,7 +1924,7 @@ export async function initEngine() {
       if (p.y > logical.h + 10) p.y = -10;
     }
     if (state.pathShiftAnim) { state.pathShiftAnim.t+=dt; if(state.pathShiftAnim.t>=state.pathShiftAnim.dur) state.pathShiftAnim=null; }
-    for (const b of state.beams) b.t-=dt;
+    for (const b of state.beams) { b.t-=dt; b.prog=clamp(1-(b.t/(b.dur||0.18)),0,1); }
     state.beams=state.beams.filter((b)=>b.t>0);
     for (const r of state.rings) { r.t-=dt; r.r+=r.grow*dt; }
     state.rings=state.rings.filter((r)=>r.t>0);
@@ -2312,26 +2314,28 @@ export async function initEngine() {
   // ── Random Dice 컬러 컨셉 + 타워디펜스 터렛 형태 ────────────
   function drawTurret(u, accent) {
     const cell = state.board.cell;
-    const baseR   = cell * 0.36; // 기지 반지름
-    const turretR = cell * 0.22; // 포탑 헤드 반지름
+    const rrank = rarityRank(u.itemRarity);
+    const sizeBoost = [1.0, 1.06, 1.12, 1.18, 1.24, 1.30][rrank] ?? 1.0;
+    const baseR   = cell * 0.18 * sizeBoost; // 기지 반지름 (50% + 레어리티 보정)
+    const turretR = cell * 0.11 * sizeBoost; // 포탑 헤드 반지름
 
     // 타입별: base 색(어두운 포화색), barrel 색(밝은 포화색), 포신 형태
     const TCFG = {
-      SNIPER:      { base: "#1a5c38", barrel: "#51cf66", bL: 0.48, bW: 0.062, sp: "scope"   },
-      SHOTGUN:     { base: "#7c1a1a", barrel: "#ff6b6b", bL: 0.28, bW: 0.092, sp: "double"  },
-      FROST:       { base: "#1a3870", barrel: "#74c0fc", bL: 0.34, bW: 0.082, sp: "crystal" },
-      TESLA:       { base: "#3a2c00", barrel: "#ffd43b", bL: 0.24, bW: 0.078, sp: "fork"    },
-      MORTAR:      { base: "#3a1a60", barrel: "#cc5de8", bL: 0.22, bW: 0.130, sp: "mortar"  },
-      BARRAGE:     { base: "#6a2e00", barrel: "#ffa94d", bL: 0.36, bW: 0.080, sp: null      },
-      CANNON:      { base: "#5c2800", barrel: "#fd7e14", bL: 0.38, bW: 0.118, sp: "cannon"  },
-      GATLING:     { base: "#7a3600", barrel: "#ff9240", bL: 0.28, bW: 0.055, sp: "triple"  },
-      BERSERKER:   { base: "#5a0000", barrel: "#ff0000", bL: 0.34, bW: 0.088, sp: null      },
-      EXECUTIONER: { base: "#380808", barrel: "#e03131", bL: 0.40, bW: 0.068, sp: null      },
-      GIANTSLAYER: { base: "#3e2600", barrel: "#ffd43b", bL: 0.38, bW: 0.138, sp: "heavy"   },
-      PINBALL:     { base: "#003848", barrel: "#22b8cf", bL: 0.24, bW: 0.068, sp: "ball"    },
-      RADAR:       { base: "#200050", barrel: "#b197fc", bL: 0.16, bW: 0.052, sp: "dish"    },
+      SNIPER:      { base: "#1a5c38", barrel: "#51cf66", bL: 0.24, bW: 0.031, sp: "scope"   },
+      SHOTGUN:     { base: "#7c1a1a", barrel: "#ff6b6b", bL: 0.14, bW: 0.046, sp: "double"  },
+      FROST:       { base: "#1a3870", barrel: "#74c0fc", bL: 0.17, bW: 0.041, sp: "crystal" },
+      TESLA:       { base: "#3a2c00", barrel: "#ffd43b", bL: 0.12, bW: 0.039, sp: "fork"    },
+      MORTAR:      { base: "#3a1a60", barrel: "#cc5de8", bL: 0.11, bW: 0.065, sp: "mortar"  },
+      BARRAGE:     { base: "#6a2e00", barrel: "#ffa94d", bL: 0.18, bW: 0.040, sp: null      },
+      CANNON:      { base: "#5c2800", barrel: "#fd7e14", bL: 0.19, bW: 0.059, sp: "cannon"  },
+      GATLING:     { base: "#7a3600", barrel: "#ff9240", bL: 0.14, bW: 0.028, sp: "triple"  },
+      BERSERKER:   { base: "#5a0000", barrel: "#ff0000", bL: 0.17, bW: 0.044, sp: null      },
+      EXECUTIONER: { base: "#380808", barrel: "#e03131", bL: 0.20, bW: 0.034, sp: null      },
+      GIANTSLAYER: { base: "#3e2600", barrel: "#ffd43b", bL: 0.19, bW: 0.069, sp: "heavy"   },
+      PINBALL:     { base: "#003848", barrel: "#22b8cf", bL: 0.12, bW: 0.034, sp: "ball"    },
+      RADAR:       { base: "#200050", barrel: "#b197fc", bL: 0.08, bW: 0.026, sp: "dish"    },
     };
-    const cfg = TCFG[u.type] ?? { base: "#1a2a4a", barrel: accent, bL: 0.38, bW: 0.088, sp: null };
+    const cfg = TCFG[u.type] ?? { base: "#1a2a4a", barrel: accent, bL: 0.19, bW: 0.044, sp: null };
     const bL  = cell * cfg.bL;  // 포신 길이
     const bW  = cell * cfg.bW;  // 포신 너비
     const bSx = turretR * 0.72; // 포신 시작 X (터렛 헤드 가장자리)
@@ -2370,6 +2374,55 @@ export async function initEngine() {
     ctx.strokeStyle = "rgba(255,255,255,0.13)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(0, 0, baseR * 0.60, 0, Math.PI * 2); ctx.stroke();
+
+    // ② 레어리티 장식 (MAGIC 이상)
+    if (rrank >= 1) {
+      const now2 = perfNow() / 1000;
+      if (rrank === 1) {
+        // MAGIC: 추가 내부 링
+        ctx.strokeStyle = cfg.barrel;
+        ctx.globalAlpha = 0.45;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(0, 0, baseR * 0.80, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else {
+        // RARE+: 테두리 도트
+        const dotCount = rrank >= 4 ? 6 : 4;
+        const rotSpeed = rrank >= 5 ? now2 * 1.4 : (rrank >= 4 ? now2 * 0.9 : 0);
+        ctx.fillStyle = cfg.barrel;
+        ctx.shadowColor = cfg.barrel;
+        ctx.shadowBlur = 8;
+        for (let i = 0; i < dotCount; i++) {
+          const ang = rotSpeed + (i / dotCount) * Math.PI * 2;
+          const dr = baseR * 0.82;
+          ctx.beginPath(); ctx.arc(Math.cos(ang) * dr, Math.sin(ang) * dr, baseR * 0.10, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      }
+      // LEGENDARY+: 외부 액센트 링
+      if (rrank >= 3) {
+        ctx.strokeStyle = cfg.barrel;
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = cfg.barrel;
+        ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(0, 0, baseR * 1.30, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      }
+      // MYTHIC: 외부 펄싱 링
+      if (rrank >= 5) {
+        const pulse = 0.5 + 0.5 * Math.sin(perfNow() / 1000 * 3.5);
+        ctx.strokeStyle = cfg.barrel;
+        ctx.globalAlpha = 0.30 + 0.30 * pulse;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = cfg.barrel;
+        ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(0, 0, baseR * 1.62, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      }
+    }
 
     // ③ 포탑 헤드 + 포신 (aimAngle 기준 회전)
     ctx.save();
@@ -2685,14 +2738,112 @@ export async function initEngine() {
     const vfx=state.vfxEnabled?VFX_INTENSITY_BASE:0;
     if (vfx>0) {
       for (const b of state.beams) {
-        const a=clamp(b.t/0.10,0,1);
-        ctx.save(); ctx.globalAlpha=a*vfx;
-        // 두께 있는 빔: 외곽 글로우 + 내부 밝은 코어
-        ctx.strokeStyle=b.color; ctx.lineWidth=b.thick??3;
-        ctx.shadowColor=b.color; ctx.shadowBlur=14*vfx;
-        ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke();
-        ctx.strokeStyle="rgba(255,255,255,0.55)"; ctx.lineWidth=1; ctx.shadowBlur=0;
-        ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke();
+        const prog = b.prog ?? 0;
+        const fade = clamp(b.t / (b.dur * 0.35 || 0.07), 0, 1);
+        const px = b.x1 + (b.x2 - b.x1) * prog;
+        const py = b.y1 + (b.y2 - b.y1) * prog;
+        const thick = b.thick ?? 3;
+        ctx.save(); ctx.globalAlpha = fade * vfx;
+
+        if (b.type === "TESLA") {
+          // 테슬라: 지그재그 라이트닝 (x1,y1 → 현재 위치)
+          const zz = b.zigzag || [];
+          const segCount = zz.length;
+          const dx = px - b.x1, dy = py - b.y1;
+          const len = Math.hypot(dx, dy);
+          const nx = len > 0 ? -dy / len : 0, ny = len > 0 ? dx / len : 0;
+          ctx.strokeStyle = b.color; ctx.lineWidth = thick * 1.2;
+          ctx.shadowColor = b.color; ctx.shadowBlur = 16 * vfx;
+          ctx.lineCap = "round"; ctx.lineJoin = "round";
+          ctx.beginPath(); ctx.moveTo(b.x1, b.y1);
+          for (let i = 0; i < segCount; i++) {
+            const t = (i + 1) / (segCount + 1);
+            ctx.lineTo(b.x1 + dx * t + nx * zz[i], b.y1 + dy * t + ny * zz[i]);
+          }
+          ctx.lineTo(px, py); ctx.stroke();
+          ctx.strokeStyle = "rgba(255,255,180,0.70)"; ctx.lineWidth = 1.2; ctx.shadowBlur = 0;
+          ctx.beginPath(); ctx.moveTo(b.x1, b.y1);
+          for (let i = 0; i < segCount; i++) {
+            const t = (i + 1) / (segCount + 1);
+            ctx.lineTo(b.x1 + dx * t + nx * zz[i], b.y1 + dy * t + ny * zz[i]);
+          }
+          ctx.lineTo(px, py); ctx.stroke();
+          // 전기 점
+          ctx.fillStyle = "#fff"; ctx.shadowColor = b.color; ctx.shadowBlur = 14 * vfx;
+          ctx.beginPath(); ctx.arc(px, py, thick * 1.1, 0, Math.PI * 2); ctx.fill();
+        } else if (b.type === "MORTAR" || b.type === "CANNON") {
+          // 포탄: 포물선 궤적 + 탄두 점
+          const mx = (b.x1 + b.x2) / 2;
+          const my = (b.y1 + b.y2) / 2 - Math.hypot(b.x2 - b.x1, b.y2 - b.y1) * 0.38;
+          // 궤적 잔상 (이미 지나간 구간)
+          const trailEnd = Math.max(0, prog - 0.18);
+          if (trailEnd > 0) {
+            ctx.strokeStyle = b.color; ctx.lineWidth = thick * 0.7;
+            ctx.shadowColor = b.color; ctx.shadowBlur = 8 * vfx;
+            ctx.globalAlpha = fade * 0.45 * vfx;
+            ctx.beginPath();
+            const steps = 10;
+            for (let i = 0; i <= steps; i++) {
+              const t = trailEnd * i / steps;
+              const bx = (1-t)*(1-t)*b.x1 + 2*(1-t)*t*mx + t*t*b.x2;
+              const by = (1-t)*(1-t)*b.y1 + 2*(1-t)*t*my + t*t*b.y2;
+              i === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = fade * vfx;
+          }
+          // 탄두 원
+          ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 14 * vfx;
+          ctx.beginPath(); ctx.arc(px, py, thick * 1.4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.80)";
+          ctx.shadowBlur = 0;
+          ctx.beginPath(); ctx.arc(px - thick * 0.35, py - thick * 0.35, thick * 0.55, 0, Math.PI * 2); ctx.fill();
+        } else if (b.type === "FROST") {
+          // 프로스트: 그라디언트 얼음 빔 + 크리스탈 점
+          const trailLen = Math.max(0.05, prog);
+          const tx = b.x1 + (b.x2 - b.x1) * Math.max(0, prog - 0.30);
+          const ty = b.y1 + (b.y2 - b.y1) * Math.max(0, prog - 0.30);
+          const grad = ctx.createLinearGradient(tx, ty, px, py);
+          grad.addColorStop(0, "rgba(116,192,252,0)");
+          grad.addColorStop(1, b.color);
+          ctx.strokeStyle = grad; ctx.lineWidth = thick;
+          ctx.shadowColor = b.color; ctx.shadowBlur = 12 * vfx;
+          ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py); ctx.stroke();
+          // 크리스탈 끝점
+          ctx.save(); ctx.translate(px, py);
+          const ang = Math.atan2(b.y2 - b.y1, b.x2 - b.x1);
+          ctx.rotate(ang);
+          ctx.fillStyle = "#c5f6fa"; ctx.shadowColor = "#74c0fc"; ctx.shadowBlur = 16 * vfx;
+          ctx.beginPath();
+          ctx.moveTo(thick * 1.6, 0); ctx.lineTo(0, -thick * 0.9); ctx.lineTo(-thick * 0.5, 0); ctx.lineTo(0, thick * 0.9);
+          ctx.closePath(); ctx.fill();
+          ctx.restore();
+        } else {
+          // 기본: 그라디언트 궤적 + 빛나는 탄두
+          const tx = b.x1 + (b.x2 - b.x1) * Math.max(0, prog - 0.25);
+          const ty = b.y1 + (b.y2 - b.y1) * Math.max(0, prog - 0.25);
+          const grad = ctx.createLinearGradient(tx, ty, px, py);
+          grad.addColorStop(0, "rgba(0,0,0,0)");
+          grad.addColorStop(1, b.color);
+          ctx.strokeStyle = grad; ctx.lineWidth = thick;
+          ctx.shadowColor = b.color; ctx.shadowBlur = 12 * vfx;
+          ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py); ctx.stroke();
+          // 탄두 점
+          ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 18 * vfx;
+          ctx.beginPath(); ctx.arc(px, py, thick * 1.2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.90)"; ctx.shadowBlur = 0;
+          ctx.beginPath(); ctx.arc(px, py, thick * 0.52, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // 착탄 플래시 (prog > 0.82)
+        if (prog > 0.82) {
+          const flashA = (prog - 0.82) / 0.18;
+          ctx.globalAlpha = flashA * 0.75 * vfx;
+          ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 24 * vfx;
+          ctx.beginPath(); ctx.arc(b.x2, b.y2, thick * (2.8 + flashA * 2.2), 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
         ctx.restore();
       }
       for (const r of state.rings) {
