@@ -1682,8 +1682,13 @@ export async function initEngine() {
 
   function addHitRing(x, y, color, crit=false, towerType=null) {
     if (!state.vfxEnabled) return;
-    // 기본 임팩트 링 (조금 더 짧게 — 슬래시+스파크가 메인 표현)
-    state.rings.push({ x,y,t:crit?0.32:0.22,r:crit?5:3,grow:crit?200:140,color,crit });
+    // 임팩트 스타버스트 (확장 X — 즉시 최대 크기로 등장 후 페이드)
+    const burst = crit
+      ? { r: 22, life: 0.30, spikes: 8, innerRatio: 0.36, lw: 2.2 }
+      : { r: 14, life: 0.20, spikes: 6, innerRatio: 0.40, lw: 1.6 };
+    state.rings.push({ x, y, t: burst.life, life: burst.life, r: burst.r, grow: 0,
+                       color, crit, spikes: burst.spikes,
+                       innerRatio: burst.innerRatio, lw: burst.lw });
 
     // ── 중세 타격 스파크 (타입별 색상/형태) ──
     const isFrost  = towerType === "FROST";
@@ -1981,7 +1986,7 @@ export async function initEngine() {
     if (state.pathShiftAnim) { state.pathShiftAnim.t+=dt; if(state.pathShiftAnim.t>=state.pathShiftAnim.dur) state.pathShiftAnim=null; }
     for (const b of state.beams) { b.t-=dt; b.prog=clamp(1-(b.t/(b.dur||0.18)),0,1); }
     state.beams=state.beams.filter((b)=>b.t>0);
-    for (const r of state.rings) { r.t-=dt; r.r+=r.grow*dt; }
+    for (const r of state.rings) { r.t-=dt; if (r.grow) r.r+=r.grow*dt; }
     state.rings=state.rings.filter((r)=>r.t>0);
     for (const p of state.puffs) { p.t-=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=(p.fric??0.90); p.vy=p.vy*(p.fric??0.90)+(p.g??90)*dt; }
     state.puffs=state.puffs.filter((p)=>p.t>0);
@@ -3047,31 +3052,56 @@ export async function initEngine() {
 
         ctx.restore();
       }
-      // ── 임팩트 링 (중세 문장(紋章) 스타일 틱마크 포함) ──
+      // ── 임팩트 스타버스트 (중세 검격/충격 — 확장 없이 번쩍 후 소멸) ──
       for (const r of state.rings) {
-        const lifeT = r.crit ? 0.32 : 0.22;
-        const a = clamp(r.t / lifeT, 0, 1);
+        const a    = clamp(r.t / (r.life || 0.22), 0, 1);
+        const ease = a * a;                         // 빠른 등장, 급격한 소멸
+        const scale = 0.60 + 0.40 * a;             // 등장 시 약간 수축하며 사라짐
+        const outerR = r.r * scale;
+        const innerR = outerR * (r.innerRatio ?? 0.38);
+        const spikes = r.spikes ?? 6;
+        const rot    = -Math.PI / 2;               // 12시 방향 기준
+
         ctx.save();
-        ctx.globalAlpha = a * vfx;
-        ctx.strokeStyle = r.color;
-        ctx.lineWidth = r.crit ? 2.8 : 1.8;
+        ctx.translate(r.x, r.y);
         ctx.shadowColor = r.color;
-        ctx.shadowBlur = (r.crit ? 18 : 10) * vfx;
-        // 메인 링
-        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
-        // 방사형 틱마크 (중세 방패/문장 느낌)
-        const tickN = r.crit ? 8 : 6;
-        ctx.lineWidth = r.crit ? 1.8 : 1.2;
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = a * 0.70 * vfx;
-        for (let i = 0; i < tickN; i++) {
-          const ang = (i / tickN) * Math.PI * 2;
-          const rIn = r.r * 1.10, rOut = r.r * (r.crit ? 1.30 : 1.24);
-          ctx.beginPath();
-          ctx.moveTo(r.x + Math.cos(ang) * rIn, r.y + Math.sin(ang) * rIn);
-          ctx.lineTo(r.x + Math.cos(ang) * rOut, r.y + Math.sin(ang) * rOut);
-          ctx.stroke();
+
+        // ① 내부 채움 (밝게 터지는 느낌)
+        ctx.beginPath();
+        for (let i = 0; i < spikes * 2; i++) {
+          const ang = rot + (i / (spikes * 2)) * Math.PI * 2;
+          const rad = i % 2 === 0 ? outerR : innerR;
+          i === 0 ? ctx.moveTo(Math.cos(ang)*rad, Math.sin(ang)*rad)
+                  : ctx.lineTo(Math.cos(ang)*rad, Math.sin(ang)*rad);
         }
+        ctx.closePath();
+        ctx.globalAlpha = ease * 0.38 * vfx;
+        ctx.fillStyle = r.color;
+        ctx.shadowBlur = (r.crit ? 20 : 12) * vfx;
+        ctx.fill();
+
+        // ② 아웃라인 (선명한 윤곽)
+        ctx.beginPath();
+        for (let i = 0; i < spikes * 2; i++) {
+          const ang = rot + (i / (spikes * 2)) * Math.PI * 2;
+          const rad = i % 2 === 0 ? outerR : innerR;
+          i === 0 ? ctx.moveTo(Math.cos(ang)*rad, Math.sin(ang)*rad)
+                  : ctx.lineTo(Math.cos(ang)*rad, Math.sin(ang)*rad);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = r.lw ?? 1.8;
+        ctx.globalAlpha = ease * vfx;
+        ctx.shadowBlur = (r.crit ? 14 : 8) * vfx;
+        ctx.stroke();
+
+        // ③ 중심 하이라이트 (타격 지점 빛 터짐)
+        ctx.globalAlpha = ease * 0.75 * vfx;
+        ctx.fillStyle = "rgba(255,255,220,0.90)";
+        ctx.shadowBlur = (r.crit ? 18 : 10) * vfx;
+        ctx.shadowColor = "rgba(255,255,200,0.80)";
+        ctx.beginPath(); ctx.arc(0, 0, outerR * (r.crit ? 0.26 : 0.22), 0, Math.PI * 2); ctx.fill();
+
         ctx.restore();
       }
 
