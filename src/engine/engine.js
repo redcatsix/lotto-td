@@ -349,6 +349,7 @@ export async function initEngine() {
     beams: [],
     rings: [],
     puffs: [],
+    slashes: [],   // 타격 순간 ×자 임팩트 마크
     floaters: [],
     screenShake: { t: 0, life: 0, strength: 0, seed: Math.random() * 1000, maxOffset: 12 },
     drag: { active: false, unit: null, fromKey: null, fromCell: null, x: 0, y: 0, hoverCell: null, hoverValid: false },
@@ -1679,9 +1680,63 @@ export async function initEngine() {
     return ordered.slice(0,n);
   }
 
-  function addHitRing(x, y, color, crit=false) {
+  function addHitRing(x, y, color, crit=false, towerType=null) {
     if (!state.vfxEnabled) return;
-    state.rings.push({ x,y,t:crit?0.42:0.30,r:crit?6:4,grow:crit?260:180,color,crit });
+    // 기본 임팩트 링 (조금 더 짧게 — 슬래시+스파크가 메인 표현)
+    state.rings.push({ x,y,t:crit?0.32:0.22,r:crit?5:3,grow:crit?200:140,color,crit });
+
+    // ── 중세 타격 스파크 (타입별 색상/형태) ──
+    const isFrost  = towerType === "FROST";
+    const isTesla  = towerType === "TESLA";
+    const isCannon = towerType === "MORTAR" || towerType === "CANNON";
+    const sparkN   = crit ? 9 : 6;
+    const sparkCol = isFrost ? "#c5f6fa" : isTesla ? "#ffe066" : color;
+
+    for (let i = 0; i < sparkN; i++) {
+      const baseAng = (i / sparkN) * Math.PI * 2;
+      const ang = baseAng + (Math.random() - 0.5) * 0.55;
+      const spd = crit
+        ? 85 + Math.random() * 75
+        : 55 + Math.random() * 50;
+      const life = 0.18 + Math.random() * 0.14;
+      // 프로스트: 얼음 파편(천천히), 캐논: 무거운 파편(짧게), 테슬라: 전기 호(빠르게)
+      const grav  = isFrost ? 20 : isCannon ? 80 : 30;
+      const fric  = isFrost ? 0.88 : isCannon ? 0.78 : 0.82;
+      state.puffs.push({
+        x, y,
+        vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+        t: life, life, g: grav, fric,
+        r: crit ? 2.2 : 1.4,
+        color: sparkCol, spark: true
+      });
+    }
+
+    // ── 캐논/모타르: 추가 연기 잔해 파편 ──
+    if (isCannon) {
+      for (let i = 0; i < (crit ? 5 : 3); i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 30 + Math.random() * 40;
+        state.puffs.push({
+          x, y,
+          vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd - 25,
+          t: 0.30 + Math.random()*0.20, life: 0.50,
+          g: 110, fric: 0.86,
+          r: 2.5 + Math.random()*1.8,
+          color: "rgba(140,110,80,0.72)", spark: false
+        });
+      }
+    }
+
+    // ── ×자 임팩트 슬래시 마크 ──
+    if (crit || isCannon) {
+      state.slashes.push({
+        x, y,
+        t: 0.26, life: 0.26,
+        size: crit ? 16 : 10,
+        color,
+        rot: Math.random() * Math.PI * 0.5   // 0~90° 랜덤 회전
+      });
+    }
   }
 
   function addPuff(x, y, color, power=1.0) {
@@ -1701,9 +1756,9 @@ export async function initEngine() {
     en.hp-=baseDmg; en.hitFlash=0.14;
     if (attackerKey) { en.lastHitKey=attackerKey; recordDamage(attackerKey,baseDmg,isCrit); }
     const ringCol=rarityColor(u.itemRarity);
-    const floaterCol=isCrit?"rgba(255,107,107,0.95)":(ric?"rgba(210,210,210,0.92)":"rgba(255,255,255,0.92)");
+    const floaterCol=isCrit?"rgba(255,215,0,0.98)":(ric?"rgba(210,210,210,0.92)":"rgba(255,255,255,0.92)");
     addFloater(hitX,hitY,`${baseDmg}`,floaterCol,isCrit);
-    addHitRing(hitX,hitY,ringCol,isCrit);
+    addHitRing(hitX,hitY,ringCol,isCrit,u.type);
     if (ric && flags.showRicochetText!==false) {
       en.ricochetPopupCd=en.ricochetPopupCd??0;
       if (en.ricochetPopupCd<=0) { addFloater(hitX,hitY-18,"도탄!","rgba(210,210,210,0.92)",false); en.ricochetPopupCd=0.35; }
@@ -1932,6 +1987,8 @@ export async function initEngine() {
     state.puffs=state.puffs.filter((p)=>p.t>0);
     for (const f of state.floaters) { f.t-=dt; f.y+=f.vy*dt; f.vy+=90*dt; }
     state.floaters=state.floaters.filter((f)=>f.t>0);
+    for (const s of state.slashes) { s.t-=dt; }
+    state.slashes=state.slashes.filter((s)=>s.t>0);
     state.msg.t=Math.max(0,state.msg.t-dt);
     if (state.banner) state.banner.t=Math.max(0,(state.banner.t||0)-dt);
     if (state.screenShake) {
@@ -2990,29 +3047,113 @@ export async function initEngine() {
 
         ctx.restore();
       }
+      // ── 임팩트 링 (중세 문장(紋章) 스타일 틱마크 포함) ──
       for (const r of state.rings) {
-        const a=clamp(r.t/(r.crit?0.42:0.30),0,1);
-        ctx.save(); ctx.globalAlpha=a*vfx; ctx.strokeStyle=r.color; ctx.lineWidth=r.crit?4:2;
-        ctx.shadowColor=r.color; ctx.shadowBlur=(r.crit?22:12)*vfx;
-        ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,Math.PI*2); ctx.stroke(); ctx.restore();
+        const lifeT = r.crit ? 0.32 : 0.22;
+        const a = clamp(r.t / lifeT, 0, 1);
+        ctx.save();
+        ctx.globalAlpha = a * vfx;
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = r.crit ? 2.8 : 1.8;
+        ctx.shadowColor = r.color;
+        ctx.shadowBlur = (r.crit ? 18 : 10) * vfx;
+        // 메인 링
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
+        // 방사형 틱마크 (중세 방패/문장 느낌)
+        const tickN = r.crit ? 8 : 6;
+        ctx.lineWidth = r.crit ? 1.8 : 1.2;
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = a * 0.70 * vfx;
+        for (let i = 0; i < tickN; i++) {
+          const ang = (i / tickN) * Math.PI * 2;
+          const rIn = r.r * 1.10, rOut = r.r * (r.crit ? 1.30 : 1.24);
+          ctx.beginPath();
+          ctx.moveTo(r.x + Math.cos(ang) * rIn, r.y + Math.sin(ang) * rIn);
+          ctx.lineTo(r.x + Math.cos(ang) * rOut, r.y + Math.sin(ang) * rOut);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
+
+      // ── 퍼프 파티클: spark=true → 속도 방향 늘어난 불꽃 선 ──
       for (const p of state.puffs) {
-        const a=clamp(p.t/(p.life||0.65),0,1);
-        ctx.save(); ctx.globalAlpha=a*a*0.92*vfx; ctx.fillStyle=p.color;
-        ctx.shadowColor=p.color; ctx.shadowBlur=8*vfx;
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.restore();
+        const a = clamp(p.t / (p.life || 0.65), 0, 1);
+        ctx.save();
+        ctx.globalAlpha = a * a * 0.95 * vfx;
+        ctx.fillStyle = p.color;
+        ctx.strokeStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8 * vfx;
+        if (p.spark) {
+          // 속도 방향으로 늘어난 금속 스파크 선
+          const spd = Math.hypot(p.vx, p.vy);
+          const len = Math.max(4, spd * 0.055);
+          ctx.lineWidth = p.r * 0.85;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          const nx = spd > 0 ? p.vx / spd : 0, ny = spd > 0 ? p.vy / spd : 0;
+          ctx.moveTo(p.x - nx * len, p.y - ny * len);
+          ctx.lineTo(p.x + nx * len * 0.4, p.y + ny * len * 0.4);
+          ctx.stroke();
+          // 스파크 선두 밝은 점
+          ctx.globalAlpha = a * 0.90 * vfx;
+          ctx.shadowBlur = 14 * vfx;
+          ctx.fillStyle = "rgba(255,255,200,0.90)";
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.55, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // ── ×자 임팩트 슬래시 마크 (크릿 / 캐논 타격) ──
+      for (const s of state.slashes) {
+        const a = clamp(s.t / s.life, 0, 1);
+        const sz = s.size * (0.40 + 0.60 * a); // 등장→빠르게 수축
+        ctx.save();
+        ctx.globalAlpha = a * vfx;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2.2 + a * 1.2;
+        ctx.lineCap = "round";
+        ctx.shadowColor = s.color;
+        ctx.shadowBlur = 14 * vfx;
+        ctx.translate(s.x, s.y);
+        ctx.rotate(s.rot);
+        // × 두 획
+        ctx.beginPath(); ctx.moveTo(-sz, -sz); ctx.lineTo(sz, sz); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sz, -sz); ctx.lineTo(-sz, sz); ctx.stroke();
+        // 흰색 중심 하이라이트
+        ctx.strokeStyle = "rgba(255,255,255,0.60)";
+        ctx.lineWidth = 1.0;
+        ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.moveTo(-sz*0.35,-sz*0.35); ctx.lineTo(sz*0.35,sz*0.35); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sz*0.35,-sz*0.35); ctx.lineTo(-sz*0.35,sz*0.35); ctx.stroke();
+        ctx.restore();
       }
     }
     const nowS=perfNow()/1000;
     for (const f of state.floaters) {
       const life=f.life||0.85; const a=clamp(f.t/life,0,1); const p=clamp((life-f.t)/life,0,1);
-      const popDur=0.12; const popT=clamp((life-f.t)/popDur,0,1); const popScale=1+(1-popT)*(f.crit?0.55:0.25);
+      const popDur=0.12; const popT=clamp((life-f.t)/popDur,0,1); const popScale=1+(1-popT)*(f.crit?0.60:0.25);
       let dx=0,dy=0;
-      if (f.shake) { const j=(1-p)*3.0; dx=Math.sin(nowS*45+(f.seed||0))*j; dy=Math.cos(nowS*38+(f.seed||0)*1.7)*j; }
+      if (f.shake) { const j=(1-p)*3.5; dx=Math.sin(nowS*45+(f.seed||0))*j; dy=Math.cos(nowS*38+(f.seed||0)*1.7)*j; }
       ctx.save(); ctx.globalAlpha=a*DMG_FLOATERS_INTENSITY; ctx.translate(f.x+dx,f.y+dy); ctx.scale(popScale,popScale);
       ctx.font=`${f.crit?900:800} ${f.size}px ui-sans-serif, system-ui`; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.lineWidth=f.crit?3:2; ctx.strokeStyle="rgba(0,0,0,0.55)"; ctx.strokeText(f.text,0,0);
-      ctx.fillStyle=f.color; ctx.shadowColor="rgba(0,0,0,0.55)"; ctx.shadowBlur=(f.crit?12:8)*DMG_FLOATERS_INTENSITY; ctx.fillText(f.text,0,0); ctx.restore();
+      // 크릿: 황금색 + 두꺼운 검정 아웃라인
+      const outlineW = f.crit ? 4 : 2;
+      ctx.lineWidth=outlineW; ctx.strokeStyle="rgba(0,0,0,0.72)"; ctx.strokeText(f.text,0,0);
+      ctx.fillStyle=f.color;
+      ctx.shadowColor= f.crit ? "rgba(200,150,0,0.80)" : "rgba(0,0,0,0.55)";
+      ctx.shadowBlur=(f.crit?16:8)*DMG_FLOATERS_INTENSITY; ctx.fillText(f.text,0,0);
+      // 크릿: 황금 글로우 두 번째 패스 (더 밝게)
+      if (f.crit) {
+        ctx.globalAlpha = a * 0.45 * DMG_FLOATERS_INTENSITY;
+        ctx.fillStyle = "rgba(255,240,100,0.90)";
+        ctx.shadowColor = "rgba(255,220,0,0.90)";
+        ctx.shadowBlur = 22 * DMG_FLOATERS_INTENSITY;
+        ctx.fillText(f.text,0,0);
+      }
+      ctx.restore();
     }
   }
 
