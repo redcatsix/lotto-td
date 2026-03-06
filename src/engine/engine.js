@@ -92,6 +92,7 @@ function createBoardLayout(viewW, viewH) {
       const y = gridY + r * (cell + gap);
       cells.push({ r, c, x, y, w: cell, h: cell });
     }
+    skillLines.appendChild(frag);
   }
 
   const innerX = gridX + 1 * (cell + gap);
@@ -1245,6 +1246,7 @@ export async function initEngine() {
         frag.appendChild(line);
       }
     }
+    skillLines.appendChild(frag);
   }
 
 
