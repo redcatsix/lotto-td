@@ -366,6 +366,10 @@ export async function initEngine() {
     banner: { title: "", sub: "", t: 0 },
     stageStats: makeStageStats(1),
     stageFury: null,
+    coreShield: false,        // R_CORE_SHIELD: 다음 코어 피격 1회 무효
+    stageCritBonus: 0,        // R_STAGE_CRIT: 이번 스테이지 전체 치명타율 +X
+    coreInvincible: null,     // L_CORE_INVINCIBLE: 이번 스테이지 코어 무적(stage 번호)
+    globalFreezeT: 0,         // L_TIME_FREEZE: 남은 동결 시간(초)
     msg: { text: "", t: 0 },
 
     // ✅ 웨이브 타입 관련 state
@@ -438,6 +442,10 @@ export async function initEngine() {
     if (elShopCommon) elShopCommon.textContent = String(state.econ.tickets.common);
     if (elShopRare) elShopRare.textContent = String(state.econ.tickets.rare);
     if (elShopLegend) elShopLegend.textContent = String(state.econ.tickets.legend);
+    // 섹션 내 서브 카운트 동기화
+    const elSC=document.getElementById("shop-common-count"); if(elSC) elSC.textContent=String(state.econ.tickets.common);
+    const elSR=document.getElementById("shop-rare-count");   if(elSR) elSR.textContent=String(state.econ.tickets.rare);
+    const elSL=document.getElementById("shop-legend-count"); if(elSL) elSL.textContent=String(state.econ.tickets.legend);
     // ✅ 코어 HP 바 업데이트
     if (elCoreHpBar) {
       const pct = clamp(state.coreHp / (state.coreHpMax || 20), 0, 1);
@@ -700,6 +708,7 @@ export async function initEngine() {
       cdMul *= (state.stageFury.cdMul ?? 1.0);
       dmgMul *= (state.stageFury.dmgMul ?? 1.0);
     }
+    if (state.stageCritBonus > 0) critAdd += state.stageCritBonus;
     cdMul = clamp(cdMul, 0.40, 1.0);
     return { cdMul, critAdd, dmgMul };
   }
@@ -826,16 +835,29 @@ export async function initEngine() {
     if (!shopPanel) return;
     const { commonItems, rareItems, legendItems } = buildShopItems(state);
 
-    function renderList(root, items, curLabel) {
+    // 등급별 색상 정보
+    const TIER_META = {
+      common: { label:"일반", cls:"shop-item--common" },
+      rare:   { label:"레어", cls:"shop-item--rare"   },
+      legend: { label:"전설", cls:"shop-item--legend" },
+    };
+
+    function renderList(root, items) {
       if (!root) return;
       root.innerHTML = items.map((it) => {
-        const dis = it.enabled ? "" : "disabled";
-        return `<button class="shop-item" data-shopid="${it.id}" data-cur="${it.currency}" ${dis}><div class="shop-title">${safeText(it.title)}</div><div class="shop-desc">${safeText(it.desc)}</div><div class="shop-cost">비용: ${curLabel} ${it.cost}</div></button>`;
+        const dis  = it.enabled ? "" : "disabled";
+        const meta = TIER_META[it.currency] ?? TIER_META.common;
+        const icon = it.icon ? `<span class="shop-icon">${it.icon}</span>` : "";
+        const costBadge = `<span class="shop-cost-badge shop-cost-badge--${it.currency}">${meta.label} ${it.cost}</span>`;
+        return `<button class="shop-item ${meta.cls}" data-shopid="${it.id}" data-cur="${it.currency}" ${dis}>`
+          + `<div class="shop-item-top">${icon}<div class="shop-title">${safeText(it.title)}</div>${costBadge}</div>`
+          + `<div class="shop-desc">${safeText(it.desc)}</div>`
+          + `</button>`;
       }).join("");
     }
-    renderList(shopCommonItems, commonItems, "일반");
-    renderList(shopRareItems, rareItems, "레어");
-    renderList(shopLegendItems, legendItems, "전설");
+    renderList(shopCommonItems, commonItems);
+    renderList(shopRareItems,   rareItems);
+    renderList(shopLegendItems, legendItems);
   }
 
   function handleShopPurchase(id, currency) {
@@ -861,6 +883,45 @@ export async function initEngine() {
         state.rerollStreak = { key, count: Math.min(REROLL_STREAK_NEED, cur+1) };
         state.msg = { text: "연속 리롤 +1", t: 0.8 }; syncTopUI(); buildTooltip(state.units.get(key)); return;
       }
+      // ── 신규 일반 ──
+      if (id === "C_RELOAD_CLEAR") {
+        if (c < 2) return fail("일반 티켓 부족");
+        const key = state.selectedKey;
+        if (!key || !state.units.has(key)) return fail("타워를 선택하세요");
+        const u = state.units.get(key);
+        state.econ.tickets.common -= 2;
+        u.reloadT = 0; u.overheatT = 0; u.cd = 0;
+        state.msg = { text: "재장전 해제!", t: 0.8 }; syncTopUI(); return;
+      }
+      if (id === "C_LUCKY_PACK") {
+        if (c < 1) return fail("일반 티켓 부족");
+        state.econ.tickets.common -= 1; state.econ.tickets.common += 3;
+        state.msg = { text: "행운 꾸러미 +3 🎁", t: 0.8 }; syncTopUI(); return;
+      }
+      if (id === "C_TICKET_EXCHANGE") {
+        if (c < 5) return fail("일반 티켓 부족");
+        state.econ.tickets.common -= 5; state.econ.tickets.rare += 1;
+        state.msg = { text: "일반 5 → 레어 1 🔼", t: 0.8 }; syncTopUI(); return;
+      }
+      if (id === "C_ASPD_SHARD") {
+        if (c < 3) return fail("일반 티켓 부족");
+        const key = state.selectedKey;
+        if (!key || !state.units.has(key)) return fail("타워를 선택하세요");
+        const u = state.units.get(key);
+        state.econ.tickets.common -= 3;
+        u.cooldown = Math.max(u.cooldownFloor ?? 0.22, u.cooldown * 0.88);
+        u.cd = Math.min(u.cd ?? 0, u.cooldown);
+        state.msg = { text: "공속 파편 +12% ⚔️", t: 0.8 }; syncTopUI(); buildTooltip(u); return;
+      }
+      if (id === "C_POWER_SHARD") {
+        if (c < 3) return fail("일반 티켓 부족");
+        const key = state.selectedKey;
+        if (!key || !state.units.has(key)) return fail("타워를 선택하세요");
+        const u = state.units.get(key);
+        state.econ.tickets.common -= 3;
+        u.damage = Math.max(1, Math.round(u.damage * 1.10));
+        state.msg = { text: "공격 파편 +10% 💥", t: 0.8 }; syncTopUI(); buildTooltip(u); return;
+      }
     }
     if (currency === "rare") {
       if (id === "R_COMMON_PACK") { if (r<1) return fail("레어 티켓 부족"); state.econ.tickets.rare-=1; state.econ.tickets.common+=6; state.msg={text:"일반 티켓 +6",t:0.8}; syncTopUI(); return; }
@@ -871,6 +932,39 @@ export async function initEngine() {
         if (!key || !state.units.has(key)) return fail("타워를 선택하세요");
         state.econ.tickets.rare-=2; state.rerollStreak={key, count:REROLL_STREAK_NEED};
         state.msg={text:"SPECIAL 충전 완료",t:0.8}; syncTopUI(); buildTooltip(state.units.get(key)); return;
+      }
+      // ── 신규 레어 ──
+      if (id === "R_EXCHANGE_LEGEND") {
+        if (r < 3) return fail("레어 티켓 부족");
+        state.econ.tickets.rare -= 3; state.econ.tickets.legend += 1;
+        state.msg = { text: "레어 3 → 전설 1 👑", t: 0.9 }; syncTopUI(); return;
+      }
+      if (id === "R_ALL_RELOAD") {
+        if (r < 1) return fail("레어 티켓 부족");
+        state.econ.tickets.rare -= 1;
+        for (const u of state.units.values()) { u.reloadT=0; u.overheatT=0; u.cd=0; }
+        state.msg = { text: "전 부대 재정비! 🔄", t: 0.8 }; syncTopUI(); return;
+      }
+      if (id === "R_CORE_SHIELD") {
+        if (r < 2) return fail("레어 티켓 부족");
+        if (state.coreShield) return fail("방어막이 이미 활성");
+        state.econ.tickets.rare -= 2; state.coreShield = true;
+        state.msg = { text: "코어 방어막 활성! 🛡️", t: 0.9 }; syncTopUI(); return;
+      }
+      if (id === "R_STAGE_CRIT") {
+        if (r < 2) return fail("레어 티켓 부족");
+        if ((state.stageCritBonus??0) > 0) return fail("이미 적용됨");
+        state.econ.tickets.rare -= 2; state.stageCritBonus = 0.10;
+        state.msg = { text: "치명파 +10%! 🎯", t: 0.9 }; syncTopUI(); return;
+      }
+      if (id === "R_POWER_FORGE") {
+        if (r < 2) return fail("레어 티켓 부족");
+        const key = state.selectedKey;
+        if (!key || !state.units.has(key)) return fail("타워를 선택하세요");
+        const u = state.units.get(key);
+        state.econ.tickets.rare -= 2;
+        u.damage = Math.max(1, Math.round(u.damage * 1.15));
+        state.msg = { text: "단련 +15% 🔨", t: 0.9 }; syncTopUI(); buildTooltip(u); return;
       }
     }
     if (currency === "legend") {
@@ -886,6 +980,38 @@ export async function initEngine() {
         if (state.stageFury && state.stageFury.stage===state.stage) return fail("이미 적용됨");
         state.econ.tickets.legend-=1; state.stageFury={stage:state.stage, dmgMul:1.20, cdMul:0.90};
         state.msg={text:"스테이지 광폭!",t:0.9}; syncTopUI(); return;
+      }
+      // ── 신규 전설 ──
+      if (id === "L_LEGEND_CRACK") {
+        if (l < 1) return fail("전설 티켓 부족");
+        state.econ.tickets.legend -= 1; state.econ.tickets.rare += 4;
+        state.msg = { text: "전설 분해 → 레어 4 🔮", t: 0.9 }; syncTopUI(); return;
+      }
+      if (id === "L_CORE_INVINCIBLE") {
+        if (l < 2) return fail("전설 티켓 부족");
+        if (state.coreInvincible === state.stage) return fail("이미 적용됨");
+        state.econ.tickets.legend -= 2; state.coreInvincible = state.stage;
+        state.msg = { text: "무적 코어 발동! 💎", t: 1.0 }; syncTopUI(); return;
+      }
+      if (id === "L_FURY_MAX") {
+        if (l < 2) return fail("전설 티켓 부족");
+        if (state.stageFury && state.stageFury.stage===state.stage) return fail("이미 광폭 적용됨");
+        state.econ.tickets.legend -= 2;
+        state.stageFury = { stage:state.stage, dmgMul:1.40, cdMul:0.80 };
+        state.msg = { text: "초광폭 발동! 🌟", t: 1.0 }; syncTopUI(); return;
+      }
+      if (id === "L_MASS_POWER") {
+        if (l < 2) return fail("전설 티켓 부족");
+        state.econ.tickets.legend -= 2;
+        for (const u of state.units.values()) u.damage = Math.max(1, Math.round(u.damage * 1.10));
+        state.msg = { text: "전군 각성 +10%! ⚡", t: 1.0 }; syncTopUI(); return;
+      }
+      if (id === "L_TIME_FREEZE") {
+        if (l < 2) return fail("전설 티켓 부족");
+        state.econ.tickets.legend -= 2;
+        state.globalFreezeT = 4.0;
+        addHitRing(state.board.core.x, state.board.core.y, "#74c0fc", true);
+        state.msg = { text: "시간 정지! ❄️", t: 1.0 }; syncTopUI(); return;
       }
     }
   }
@@ -1917,6 +2043,7 @@ export async function initEngine() {
       if (en.slows.length>0) { slowMul=1.0; for (const s of en.slows) slowMul=Math.min(slowMul,s.factor); }
       const spd=en.speed*slowMul;
       if (en.pendingCoreHit) { en.hitFlash=Math.max(0,en.hitFlash-dt*6); continue; }
+      if ((state.globalFreezeT??0) > 0) { en.hitFlash=Math.max(0,en.hitFlash-dt*6); continue; } // L_TIME_FREEZE
       if (!en.rushing) {
         en.dist+=spd*dt;
         if (en.dist>=P) { en.dist-=P; en.laps+=1; if(en.laps>=en.maxLaps) en.rushing=true; }
@@ -1943,7 +2070,15 @@ export async function initEngine() {
       if (!en.pendingCoreHit) continue;
       en.pendingCoreHit=false; const cdmg=Math.max(1,Math.round(en.pendingCoreDmg??en.coreDmg??1)); en.pendingCoreDmg=0;
       if (en.hp<=0) continue;
-      any=true; en.diedToCore=true; en.hp=0; state.coreHp-=cdmg;
+      any=true; en.diedToCore=true; en.hp=0;
+      // 코어 방어막 / 무적 체크
+      if (state.coreInvincible === state.stage) {
+        state.msg={text:`코어 무적!`,t:0.8}; continue;
+      }
+      if (state.coreShield) {
+        state.coreShield=false; state.msg={text:`방어막 흡수!`,t:0.8}; syncTopUI(); continue;
+      }
+      state.coreHp-=cdmg;
       state.msg={text:`CORE -${cdmg}`,t:0.6};
       if (state.coreHp<=0) { state.coreHp=0; state.gameOver=true; openGameOver(); break; }
     }
@@ -1994,6 +2129,7 @@ export async function initEngine() {
     state.floaters=state.floaters.filter((f)=>f.t>0);
     for (const s of state.slashes) { s.t-=dt; }
     state.slashes=state.slashes.filter((s)=>s.t>0);
+    if ((state.globalFreezeT??0)>0) state.globalFreezeT=Math.max(0,state.globalFreezeT-dt);
     state.msg.t=Math.max(0,state.msg.t-dt);
     if (state.banner) state.banner.t=Math.max(0,(state.banner.t||0)-dt);
     if (state.screenShake) {

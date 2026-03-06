@@ -48,33 +48,42 @@
       <!-- Side Panel -->
       <div id="side-ui">
         <div id="shop-panel" class="side-card">
-          <div class="side-head">
-            <div class="side-title">상점</div>
-            <div class="small" style="opacity:0.8; margin-top:4px;">팝업 없음. 옆에서 바로 결제.</div>
+          <div class="side-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div>
+              <div class="side-title" style="font-size:14px;letter-spacing:0.4px;">🏪 상점</div>
+              <div class="small" style="opacity:0.55;font-size:10px;margin-top:2px;">즉시 결제 · 전략적 선택</div>
+            </div>
+            <div style="display:flex;gap:5px;align-items:center;">
+              <span class="badge normal" style="font-size:11px;">⚪ <span id="shop-common">0</span></span>
+              <span class="badge rare"   style="font-size:11px;">🟡 <span id="shop-rare">0</span></span>
+              <span class="badge legend" style="font-size:11px;">🔴 <span id="shop-legend">0</span></span>
+            </div>
           </div>
 
-          <div class="side-section">
-            <div class="side-section-title">
-              <span>일반</span>
-              <span class="badge normal">x <span id="shop-common">0</span></span>
+          <div class="shop-scroll">
+            <div class="side-section">
+              <div class="side-section-title">
+                <span>⚪ 일반</span>
+                <span class="badge normal" style="font-size:10px;">x <span id="shop-common-count">0</span></span>
+              </div>
+              <div id="shop-common-items" class="side-items"></div>
             </div>
-            <div id="shop-common-items" class="side-items"></div>
-          </div>
 
-          <div class="side-section">
-            <div class="side-section-title">
-              <span>레어</span>
-              <span class="badge rare">x <span id="shop-rare">0</span></span>
+            <div class="side-section">
+              <div class="side-section-title">
+                <span>🟡 레어</span>
+                <span class="badge rare" style="font-size:10px;">x <span id="shop-rare-count">0</span></span>
+              </div>
+              <div id="shop-rare-items" class="side-items"></div>
             </div>
-            <div id="shop-rare-items" class="side-items"></div>
-          </div>
 
-          <div class="side-section">
-            <div class="side-section-title">
-              <span>전설</span>
-              <span class="badge legend">x <span id="shop-legend">0</span></span>
+            <div class="side-section">
+              <div class="side-section-title">
+                <span>🔴 전설</span>
+                <span class="badge legend" style="font-size:10px;">x <span id="shop-legend-count">0</span></span>
+              </div>
+              <div id="shop-legend-items" class="side-items"></div>
             </div>
-            <div id="shop-legend-items" class="side-items"></div>
           </div>
         </div>
 
