@@ -3962,6 +3962,8 @@ ${buildKeyboardShortcutHelpHTML()}
   rerollBtn.addEventListener("click",()=>rerollSelectedUnit());
   legendRerollBtn.addEventListener("click",()=>legendRerollSelectedUnit());
   if (typeRerollBtn) typeRerollBtn.addEventListener("click",()=>typeRerollSelectedUnit());
+  const ttCloseBtn = document.getElementById("tt-close");
+  if (ttCloseBtn) ttCloseBtn.addEventListener("click",()=>hideContextMenus({ buyMenu, tooltip, state }));
   helpBtn.addEventListener("click",()=>openHelp());
   helpClose.addEventListener("click",()=>closeHelp());
   helpOverlay.addEventListener("pointerdown",(ev)=>{ if(ev.target===helpOverlay) closeHelp(); });
