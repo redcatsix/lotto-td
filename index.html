@@ -47,6 +47,12 @@
 
       <!-- Side Panel -->
       <div id="side-ui">
+        <!-- 모바일 전용 핸들 + 내부 탭 -->
+        <div class="sheet-handle"></div>
+        <div class="sheet-tabs">
+          <button class="sheet-tab active" id="sheet-tab-shop">🏪 상점</button>
+          <button class="sheet-tab" id="sheet-tab-dps">📊 DPS</button>
+        </div>
         <div id="shop-panel" class="side-card">
           <div class="side-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <div>
@@ -211,6 +217,28 @@
       </div>
     </div>
   </div>
+
+  <!-- 모바일 전용 하단 탭바 -->
+  <div id="mobile-tab-bar">
+    <button class="mobile-tab" id="mob-tab-shop">
+      <span class="tab-icon">🏪</span>
+      <span class="tab-label">상점</span>
+    </button>
+    <button class="mobile-tab" id="mob-tab-dps">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">DPS</span>
+    </button>
+    <button class="mobile-tab" id="mob-tab-ctrl">
+      <span class="tab-icon" id="mob-speed-icon">1x</span>
+      <span class="tab-label">속도</span>
+    </button>
+    <button class="mobile-tab" id="mob-tab-pause">
+      <span class="tab-icon" id="mob-pause-icon">⏸</span>
+      <span class="tab-label">일시정지</span>
+    </button>
+  </div>
+  <!-- 시트 배경 오버레이 -->
+  <div id="mobile-sheet-overlay"></div>
 
   <script type="module" src="./src/main.js"></script>
 </body>
