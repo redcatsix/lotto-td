@@ -24,16 +24,20 @@ import {
 } from "../entities/units.js";
 
 import {
-  SKILL_NODES,
-  SKILL_BRANCHES,
-  SKILL_MAX_LEVEL,
+  PASSIVE_NODES,
+  PASSIVE_NODE_MAP,
+  NODE_TYPE,
+  NODE_COST,
+  REGION_COLOR,
+  TREE_W as POE_W,
+  TREE_H as POE_H,
   loadMetaState,
   saveMetaState,
   computeSkillMods,
-  canUpgradeSkill,
-  getSkillLevel,
-  isTierUnlocked,
-  skillUpgradeCost,
+  isAllocated,
+  canAllocate,
+  allocateNode,
+  canAllocateAny,
 } from "../systems/skills.js";
 
 import { clamp, lerp, dist2, distToRectPerimeter, rollItemRarityBestOf, rollOptionsBestOf } from "./combat.js";
@@ -252,11 +256,7 @@ export async function initEngine() {
 
   const skillOverlay = document.getElementById("skill-overlay");
   const skillCloseBtn = document.getElementById("skill-close");
-  const skillTree = document.getElementById("skill-tree");
-  const skillLines = document.getElementById("skill-lines");
-  const skillTreeWrap = document.getElementById("skill-tree-wrap");
   const skillDetail = document.getElementById("skill-detail");
-  const skillInline = document.getElementById("skill-inline");
   const elSkillXp = document.getElementById("skill-xp");
 
   // ✅ 웨이브 타입 예고 UI 요소 (index.html에 추가됨)
@@ -271,19 +271,9 @@ export async function initEngine() {
   const meta = loadMetaState();
   let metaMods = computeSkillMods(meta);
 
-  function canUpgradeAnySkill(meta) {
-    try {
-      for (const node of SKILL_NODES) {
-        const chk = canUpgradeSkill(meta, node);
-        if (chk && chk.ok) return true;
-      }
-    } catch (e) {}
-    return false;
-  }
-
   function syncMetaUI() {
     if (elAccXp) elAccXp.textContent = String(meta.xp ?? 0);
-    const ready = canUpgradeAnySkill(meta);
+    const ready = canAllocateAny(meta);
     if (skillBtn) skillBtn.classList.toggle("ready", ready);
     if (xpBadge) xpBadge.classList.toggle("ready", ready);
     if (elSkillXp) elSkillXp.textContent = String(meta.xp ?? 0);
@@ -883,8 +873,13 @@ export async function initEngine() {
 
   // ---------------- Shop panel ----------------
 
+  let _shopCacheKey = "";
+
   function renderShopPanel() {
     if (!shopPanel) return;
+    const ck = `${state.econ.tickets.common},${state.econ.tickets.rare},${state.econ.tickets.legend},${state.stage},${state.roundPhase}`;
+    if (ck === _shopCacheKey) return;
+    _shopCacheKey = ck;
     const { commonItems, rareItems, legendItems } = buildShopItems(state);
 
     // 등급별 색상 정보
@@ -1055,200 +1050,226 @@ export async function initEngine() {
     }
   }
 
-  // ---------------- Skill tree ----------------
+  // ---------------- Skill tree (POE canvas) ----------------
 
-  let selectedSkillId = null;
+  let poeCanvas = null;
+  let poeCtx = null;
+  let poeHoverNode = null;
 
-  function hideSkillInline() { if (!skillInline) return; skillInline.classList.add("hidden"); skillInline.style.visibility="visible"; }
-
-  function positionSkillInline(id) {
-    if (!skillInline || !skillTreeWrap || !skillTree) return;
-    if (!id) { hideSkillInline(); return; }
-    const el = skillTree.querySelector(`[data-skill="${id}"]`);
-    if (!el) { hideSkillInline(); return; }
-    skillInline.classList.remove("hidden"); skillInline.style.visibility="hidden";
-    const wrapRect = skillTreeWrap.getBoundingClientRect();
-    const nodeRect = el.getBoundingClientRect();
-    const popRect = skillInline.getBoundingClientRect();
-    let x = nodeRect.right - wrapRect.left + 10;
-    let y = nodeRect.top - wrapRect.top + 2;
-    if (x + popRect.width > wrapRect.width - 8) x = nodeRect.left - wrapRect.left - popRect.width - 10;
-    x = clamp(x, 8, wrapRect.width - popRect.width - 8);
-    y = clamp(y, 8, wrapRect.height - popRect.height - 8);
-    skillInline.style.left=`${x}px`; skillInline.style.top=`${y}px`; skillInline.style.visibility="visible";
-  }
-
-  function tryUpgradeSkill(node) {
-    const chk2 = canUpgradeSkill(meta, node);
-    if (!chk2.ok) { state.msg={text:"업그레이드 불가",t:0.8}; return false; }
-    const cur2 = getSkillLevel(meta, node.id);
-    if (cur2 >= SKILL_MAX_LEVEL) return false;
-    const cost2 = chk2.cost ?? skillUpgradeCost(node, cur2);
-    meta.xp = Math.max(0, (meta.xp??0) - cost2);
-    meta.skills[node.id] = cur2 + 1;
-    saveMetaState(meta); syncMetaUI(); return true;
-  }
-
-  function renderSkillInline(id) {
-    if (!skillInline) return;
-    if (!id) { hideSkillInline(); return; }
-    const node = SKILL_NODES.find((n) => n.id === id) || null;
-    if (!node) { hideSkillInline(); return; }
-    const cur = getSkillLevel(meta, node.id);
-    const maxed = cur >= SKILL_MAX_LEVEL;
-    const next = Math.min(SKILL_MAX_LEVEL, cur + 1);
-    const cost = maxed ? 0 : skillUpgradeCost(node, cur);
-    const chk = canUpgradeSkill(meta, node);
-    let hint = "";
-    if (!chk.ok) {
-      if (chk.reason==="TIER_LOCK") hint=`이전 티어(T${node.tier-1}) 1레벨 필요`;
-      else if (chk.reason==="PARENT_LOCK") hint="이전 스킬 1레벨 필요";
-      else if (chk.reason==="NO_XP") hint=`XP 부족 (${cost})`;
-      else if (chk.reason==="MAX") hint="MAX";
+  function poeNodeRadius(type) {
+    switch (type) {
+      case NODE_TYPE.START:    return 18;
+      case NODE_TYPE.KEYSTONE: return 14;
+      case NODE_TYPE.NOTABLE:  return 11;
+      default:                 return 7;
     }
-    const curFx = fmtEffect(node, cur);
-    const nextFx = maxed ? "-" : fmtEffect(node, next);
-    skillInline.innerHTML = `
-      <div class="title">${safeText(node.name)}</div>
-      <div class="sub">Lv ${cur}/${SKILL_MAX_LEVEL} → ${next}/${SKILL_MAX_LEVEL}</div>
-      <div class="sub">현재 ${safeText(curFx)} · 다음 ${safeText(nextFx)}</div>
-      ${hint ? `<div class="hint">${safeText(hint)}</div>` : `<div class="hint">Cost: <b>${cost}</b> XP</div>`}
-      <div class="row"><button class="up" id="skill-inline-up" ${chk.ok?"":"disabled"}>+1 업그레이드</button><button class="x" id="skill-inline-x">✕</button></div>`;
-    const up = document.getElementById("skill-inline-up");
-    if (up) up.addEventListener("click", (ev) => { ev.stopPropagation(); if (tryUpgradeSkill(node)) { renderSkillTree(); renderSkillDetail(node.id); } });
-    const x = document.getElementById("skill-inline-x");
-    if (x) x.addEventListener("click", (ev) => { ev.stopPropagation(); selectedSkillId=null; hideSkillInline(); renderSkillTree(); renderSkillDetail(null); });
-    requestAnimationFrame(() => positionSkillInline(id));
+  }
+
+  function poeFindNode(cx, cy) {
+    if (!poeCanvas) return null;
+    const dpr = window.devicePixelRatio || 1;
+    const sx = poeCanvas.width / POE_W;
+    const sy = poeCanvas.height / POE_H;
+    let best = null, bestD2 = Infinity;
+    for (const nd of PASSIVE_NODES) {
+      const px = nd.x * sx, py = nd.y * sy;
+      const r = poeNodeRadius(nd.type) * dpr + 8;
+      const d2 = (cx - px) ** 2 + (cy - py) ** 2;
+      if (d2 < r * r && d2 < bestD2) { bestD2 = d2; best = nd; }
+    }
+    return best;
+  }
+
+  function drawPoeTree() {
+    if (!poeCanvas || !poeCtx) return;
+    const c = poeCtx;
+    const dpr = window.devicePixelRatio || 1;
+    const W = poeCanvas.width, H = poeCanvas.height;
+    const sx = W / POE_W, sy = H / POE_H;
+    const allocSet = new Set(meta.allocated ?? []);
+    allocSet.add("start");
+    c.clearRect(0, 0, W, H);
+
+    // Draw connections
+    const drawn = new Set();
+    for (const nd of PASSIVE_NODES) {
+      const ax = nd.x * sx, ay = nd.y * sy;
+      for (const cid of (nd.connections || [])) {
+        const edgeKey = [nd.id, cid].sort().join("|");
+        if (drawn.has(edgeKey)) continue;
+        drawn.add(edgeKey);
+        const cn = PASSIVE_NODE_MAP.get(cid);
+        if (!cn) continue;
+        const bx = cn.x * sx, by = cn.y * sy;
+        const alloc = allocSet.has(nd.id) && allocSet.has(cid);
+        c.beginPath();
+        c.moveTo(ax, ay);
+        c.lineTo(bx, by);
+        c.strokeStyle = alloc ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.12)";
+        c.lineWidth = alloc ? 2 * dpr : 1.5 * dpr;
+        c.stroke();
+      }
+    }
+
+    // Draw nodes
+    for (const nd of PASSIVE_NODES) {
+      const px = nd.x * sx, py = nd.y * sy;
+      const r = poeNodeRadius(nd.type) * dpr;
+      const alloc = allocSet.has(nd.id);
+      const hover = poeHoverNode?.id === nd.id;
+      const avail = !alloc && canAllocate(meta, nd.id).ok;
+      const col = REGION_COLOR[nd.region] ?? "#fff";
+
+      // Glow ring for allocated or hovered
+      if (alloc || hover) {
+        c.beginPath();
+        c.arc(px, py, r + 5 * dpr, 0, Math.PI * 2);
+        c.fillStyle = alloc ? col + "28" : "rgba(255,255,255,0.14)";
+        c.fill();
+      }
+
+      // Node fill
+      c.beginPath();
+      c.arc(px, py, r, 0, Math.PI * 2);
+      c.fillStyle = alloc ? col : (avail ? col + "44" : "rgba(20,28,46,0.90)");
+      c.fill();
+
+      // Border
+      c.beginPath();
+      c.arc(px, py, r, 0, Math.PI * 2);
+      c.strokeStyle = alloc ? col : (avail ? col + "aa" : "rgba(255,255,255,0.22)");
+      c.lineWidth = nd.type === NODE_TYPE.KEYSTONE ? 2.5 * dpr : 1.5 * dpr;
+      c.stroke();
+
+      // Hover outline
+      if (hover) {
+        c.beginPath();
+        c.arc(px, py, r + 3 * dpr, 0, Math.PI * 2);
+        c.strokeStyle = "rgba(255,255,255,0.75)";
+        c.lineWidth = 1.5 * dpr;
+        c.stroke();
+      }
+
+      // Keystone inner mark
+      if (nd.type === NODE_TYPE.KEYSTONE) {
+        c.beginPath();
+        c.arc(px, py, r * 0.45, 0, Math.PI * 2);
+        c.fillStyle = alloc ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.10)";
+        c.fill();
+      }
+    }
+  }
+
+  function updatePoeDetail(nd) {
+    if (!skillDetail) return;
+    if (!nd) { skillDetail.innerHTML = `<div class="small">노드를 클릭하거나 마우스를 올려 정보를 확인하세요.</div>`; return; }
+    const allocSet = new Set(meta.allocated ?? []);
+    allocSet.add("start");
+    const alloc = allocSet.has(nd.id);
+    const chk = canAllocate(meta, nd.id);
+    const cost = NODE_COST[nd.type] ?? 30;
+    const col = REGION_COLOR[nd.region] ?? "#fff";
+    const typeLabel = { start: "시작점", keystone: "키스톤", notable: "주요 노드", regular: "일반 노드" }[nd.type] ?? "노드";
+    let statusHtml = "";
+    if (alloc) {
+      statusHtml = `<div class="small" style="color:${col};margin-top:6px;">✓ 활성화됨</div>`;
+    } else if (!chk.ok) {
+      const msg = chk.reason === "NOT_CONNECTED" ? "잠김: 인접 노드를 먼저 활성화하세요"
+        : chk.reason === "NO_XP" ? `XP 부족: ${cost} XP 필요`
+        : "활성화 불가";
+      statusHtml = `<div class="small" style="color:rgba(255,107,107,0.9);margin-top:6px;">${msg}</div>`;
+    } else {
+      statusHtml = `<div class="small" style="color:#a9e34b;margin-top:6px;">활성화 가능 (${cost} XP)</div>`;
+    }
+    const allocBtnHtml = (!alloc && nd.type !== NODE_TYPE.START)
+      ? `<button id="poe-alloc-btn" ${chk.ok ? "" : "disabled"}>활성화</button>`
+      : "";
+    skillDetail.innerHTML = `
+      <div class="big" style="color:${col}">${safeText(nd.name)}</div>
+      <div class="small" style="margin-bottom:6px;opacity:0.6;">${typeLabel}</div>
+      <div class="desc">${safeText(nd.desc)}</div>
+      ${statusHtml}
+      <div class="meta" style="margin-top:10px;">보유 XP: <b>${meta.xp ?? 0}</b>${nd.type !== NODE_TYPE.START ? ` · 비용: <b>${cost}</b>` : ""}</div>
+      <div class="btnrow">${allocBtnHtml}<button id="skill-close2">닫기</button></div>`;
+    const allocBtn = document.getElementById("poe-alloc-btn");
+    if (allocBtn) allocBtn.addEventListener("click", () => {
+      if (allocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); drawPoeTree(); updatePoeDetail(nd); }
+    });
+    const c2 = document.getElementById("skill-close2");
+    if (c2) c2.addEventListener("click", () => closeSkillTree());
+  }
+
+  function initPassiveTreeUI() {
+    poeCanvas = document.getElementById("poe-tree-canvas");
+    if (!poeCanvas) return;
+    poeCtx = poeCanvas.getContext("2d");
+
+    function resizePoeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = poeCanvas.getBoundingClientRect();
+      poeCanvas.width = Math.round(rect.width * dpr);
+      poeCanvas.height = Math.round(rect.height * dpr);
+      drawPoeTree();
+    }
+
+    poeCanvas.addEventListener("pointermove", (ev) => {
+      const r = poeCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const cx = (ev.clientX - r.left) * dpr;
+      const cy = (ev.clientY - r.top) * dpr;
+      const nd = poeFindNode(cx, cy);
+      if (nd?.id !== poeHoverNode?.id) {
+        poeHoverNode = nd;
+        drawPoeTree();
+        if (nd) updatePoeDetail(nd);
+      }
+      poeCanvas.style.cursor = nd ? "pointer" : "default";
+    });
+
+    poeCanvas.addEventListener("pointerleave", () => {
+      poeHoverNode = null;
+      drawPoeTree();
+    });
+
+    poeCanvas.addEventListener("click", (ev) => {
+      const r = poeCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const cx = (ev.clientX - r.left) * dpr;
+      const cy = (ev.clientY - r.top) * dpr;
+      const nd = poeFindNode(cx, cy);
+      if (!nd) return;
+      updatePoeDetail(nd);
+      if (allocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); drawPoeTree(); updatePoeDetail(nd); }
+    });
+
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(resizePoeCanvas).observe(poeCanvas);
+    }
+    resizePoeCanvas();
   }
 
   function openSkillTree() {
     if (!skillOverlay) return;
     buyMenu.classList.add("hidden"); tooltip.classList.add("hidden");
-    renderSkillTree(); renderSkillDetail(selectedSkillId);
     skillOverlay.classList.remove("hidden"); state.uiPause = true;
+    if (!poeCanvas) {
+      initPassiveTreeUI();
+    } else {
+      requestAnimationFrame(() => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = poeCanvas.getBoundingClientRect();
+        poeCanvas.width = Math.round(rect.width * dpr);
+        poeCanvas.height = Math.round(rect.height * dpr);
+        drawPoeTree();
+      });
+    }
+    updatePoeDetail(null);
   }
 
   function closeSkillTree() {
     if (!skillOverlay) return;
-    skillOverlay.classList.add("hidden"); hideSkillInline();
+    skillOverlay.classList.add("hidden");
     state.uiPause = isSpecialOpen();
-  }
-
-  function branchNameByCol(col) { return SKILL_BRANCHES.find((x) => x.col === col)?.name ?? ""; }
-
-  function fmtPct(v, digits=1) { return (v*100).toFixed(digits); }
-
-  function fmtEffect(node, lv) {
-    if (!node?.effect) return "-";
-    const k = node.effect.kind, per = node.effect.perLevel ?? 0;
-    if (k==="HOT_COUNT_ADD") return lv>=10?"+1":"+0";
-    if (k==="STREAK_BESTOF_BONUS") return `+${lv>=10?2:(lv>=5?1:0)}`;
-    if (k==="LEGEND_REROLL_DISCOUNT") return `-${Math.floor(lv/3)}`;
-    if (k==="CORE_DMG_MUL") return `-${fmtPct(Math.min(0.30,per*lv),0)}%`;
-    if (k==="ENEMY_HP_MUL") return `-${fmtPct(Math.min(0.20,per*lv),0)}%`;
-    const v = per * lv;
-    switch (k) {
-      case "DMG_PCT": case "BOSS_DMG_PCT": case "ELITE_DMG_PCT": case "PRESSURE_DMG_PCT": case "EXECUTE_DMG_PCT": return `+${fmtPct(v,1)}%`;
-      case "CD_REDUCE_PCT": return `-${fmtPct(v,1)}%`;
-      case "RANGE_ADD": return `+${v.toFixed(2)}칸`;
-      case "CRIT_CHANCE_ADD": case "HOT_CRIT_ADD": return `+${fmtPct(v,2)}%p`;
-      case "HOT_ASPD_ADD": return `+${fmtPct(v,1)}%p`;
-      case "CRIT_MULT_ADD": return `+${v.toFixed(2)}`;
-      case "SLOW_POWER": return `+${fmtPct(v,1)}%`;
-      case "PEN_ADD": return `+${v.toFixed(2)}`;
-      case "CORE_HP_ADD": case "START_COMMON_ADD": case "START_RARE_ADD": case "START_LEGEND_ADD": return `+${Math.round(v)}`;
-      case "PREP_REDUCE": return `-${v.toFixed(2)}s`;
-      case "RARITY_UP_CHANCE": case "REROLL_REFUND_CHANCE": case "EXTRA_COMMON_CHANCE": case "EXTRA_RARE_CHANCE":
-      case "BOSS_EXTRA_LEGEND_CHANCE": case "SPECIAL_REFUND_CHANCE": case "MYTHIC_JACKPOT_CHANCE": return `+${fmtPct(v,1)}%`;
-      default: return String(v);
-    }
-  }
-
-  function renderSkillTree() {
-    if (!skillTree) return;
-    syncMetaUI();
-    const map = new Map();
-    for (const n of SKILL_NODES) map.set(`${n.tier}_${n.col}`, n);
-    const frags = [];
-    for (let tier = 1; tier <= 12; tier++) {
-      for (let col = 0; col < 3; col++) {
-        const node = map.get(`${tier}_${col}`);
-        if (!node) { frags.push(`<div></div>`); continue; }
-        const cur = getSkillLevel(meta, node.id);
-        const maxed = cur >= SKILL_MAX_LEVEL;
-        const chk = canUpgradeSkill(meta, node);
-        const locked = (!maxed && !chk.ok && (chk.reason==="TIER_LOCK"||chk.reason==="PARENT_LOCK"));
-        const cost = maxed ? 0 : skillUpgradeCost(node, cur);
-        const cls = ["skill-node", locked?"locked":"", maxed?"maxed":""].filter(Boolean).join(" ");
-        const bname = branchNameByCol(node.col);
-        const sel = (selectedSkillId===node.id) ? "style=\"outline:2px solid rgba(116,192,252,0.55);\"" : "";
-        const costLine = maxed?"MAX":(locked?"LOCK":`Cost ${cost} XP`);
-        frags.push(`<button class="${cls}" data-skill="${node.id}" ${sel}><div class="k">T${node.tier} · ${safeText(bname)}</div><div class="n">${safeText(node.name)}</div><div class="l">Lv ${cur}/${SKILL_MAX_LEVEL} · ${safeText(fmtEffect(node,cur))}</div><div class="c">${safeText(costLine)}</div></button>`);
-      }
-    }
-    skillTree.innerHTML = frags.join("\n");
-    skillTree.querySelectorAll("[data-skill]").forEach((el) => {
-      el.addEventListener("click", () => { selectedSkillId=el.getAttribute("data-skill"); renderSkillTree(); renderSkillDetail(selectedSkillId); });
-    });
-    renderSkillInline(selectedSkillId);
-    requestAnimationFrame(() => { drawSkillLines(); positionSkillInline(selectedSkillId); });
-  }
-
-  function renderSkillDetail(id) {
-    if (!skillDetail) return;
-    const node = SKILL_NODES.find((n) => n.id === id) || null;
-    if (!node) { skillDetail.innerHTML = `<div class="small">왼쪽에서 스킬을 선택하세요.</div>`; return; }
-    const cur = getSkillLevel(meta, node.id);
-    const next = Math.min(SKILL_MAX_LEVEL, cur+1);
-    const cost = cur>=SKILL_MAX_LEVEL ? 0 : skillUpgradeCost(node, cur);
-    const chk = canUpgradeSkill(meta, node);
-    let lockText = "";
-    if (!chk.ok) {
-      if (chk.reason==="TIER_LOCK") lockText=`잠김: T${node.tier-1}에서 1레벨 필요`;
-      else if (chk.reason==="PARENT_LOCK") lockText="잠김: 이전 스킬 1레벨 필요";
-      else if (chk.reason==="NO_XP") lockText=`XP 부족: ${cost} 필요`;
-      else if (chk.reason==="MAX") lockText="MAX 레벨";
-    }
-    skillDetail.innerHTML = `
-      <div class="big">${safeText(node.name)}</div>
-      <div class="small" style="margin-bottom:8px;">T${node.tier} · ${safeText(branchNameByCol(node.col))} · Lv ${cur}/${SKILL_MAX_LEVEL}</div>
-      <div class="desc">${safeText(node.desc)}\n\n현재: ${safeText(fmtEffect(node,cur))}\n다음: ${safeText(cur>=SKILL_MAX_LEVEL?"-":fmtEffect(node,next))}\n\n※ 효과는 다음 런부터.</div>
-      <div class="meta" style="margin-top:10px;">보유 XP: <b>${meta.xp??0}</b> · 비용: <b>${cost}</b></div>
-      ${lockText?`<div class="small" style="margin-top:8px;color:rgba(255,107,107,0.92);">${safeText(lockText)}</div>`:""}
-      <div class="btnrow"><button id="skill-upgrade" ${chk.ok?"":"disabled"}>업그레이드</button><button id="skill-close2">닫기</button></div>`;
-    const up = document.getElementById("skill-upgrade");
-    if (up) up.addEventListener("click", () => { if (tryUpgradeSkill(node)) { renderSkillTree(); renderSkillDetail(node.id); } });
-    const c2 = document.getElementById("skill-close2");
-    if (c2) c2.addEventListener("click", () => closeSkillTree());
-  }
-
-  function drawSkillLines() {
-    if (!skillLines || !skillTreeWrap || !skillTree) return;
-    while (skillLines.firstChild) skillLines.removeChild(skillLines.firstChild);
-    const wrapRect = skillTreeWrap.getBoundingClientRect();
-    skillLines.setAttribute("width", String(wrapRect.width));
-    skillLines.setAttribute("height", String(wrapRect.height));
-    skillLines.setAttribute("viewBox", `0 0 ${wrapRect.width} ${wrapRect.height}`);
-    const getCenter = (el) => {
-      const r = el.getBoundingClientRect();
-      return { x: (r.left+r.right)/2-wrapRect.left, y: (r.top+r.bottom)/2-wrapRect.top };
-    };
-    for (const node of SKILL_NODES) {
-      const el = skillTree.querySelector(`[data-skill="${node.id}"]`);
-      if (!el) continue;
-      for (const pid of (node.parents||[])) {
-        const pel = skillTree.querySelector(`[data-skill="${pid}"]`);
-        if (!pel) continue;
-        const a = getCenter(pel), b = getCenter(el);
-        const parentLv = getSkillLevel(meta, pid);
-        const line = document.createElementNS("http://www.w3.org/2000/svg","line");
-        line.setAttribute("x1",String(a.x)); line.setAttribute("y1",String(a.y));
-        line.setAttribute("x2",String(b.x)); line.setAttribute("y2",String(b.y));
-        line.setAttribute("stroke",`rgba(255,255,255,${parentLv>=1?0.38:0.14})`);
-        line.setAttribute("stroke-width","2"); line.setAttribute("stroke-linecap","round");
-        skillLines.appendChild(line);
-      }
-    }
   }
 
   // ---------------- SPECIAL pick ----------------
@@ -1791,10 +1812,10 @@ export async function initEngine() {
     if (type === "TESLA") {
       beam.zigzag = Array.from({length: 6}, () => (Math.random()-0.5) * 14);
     }
-    state.beams.push(beam);
+    if (state.beams.length < 60) state.beams.push(beam);
     // 머즐 플래시 퍼프
     const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
-    if (len>20) {
+    if (len>20 && state.puffs.length < 180) {
       const nx=dx/len, ny=dy/len;
       for (let i=0; i<3; i++) {
         state.puffs.push({ x:x1+nx*8,y:y1+ny*8,vx:nx*(30+Math.random()*30)+(Math.random()-0.5)*14,vy:ny*(30+Math.random()*30)+(Math.random()-0.5)*14,t:0.14+Math.random()*0.08,life:0.22,g:0,fric:0.82,r:1.8+Math.random()*1.4,color });
@@ -1814,7 +1835,7 @@ export async function initEngine() {
     const isNum=/^\d+$/.test(String(text));
     const dmgCrit = !!crit && isNum;
     const life = dmgCrit?0.95:0.85;
-    state.floaters.push({ x,y,text,t:life,life,vy:dmgCrit?-52:-38,size:dmgCrit?24:16,color,crit,shake:dmgCrit,seed:Math.random()*1000 });
+    if (state.floaters.length < 40) state.floaters.push({ x,y,text,t:life,life,vy:dmgCrit?-52:-38,size:dmgCrit?24:16,color,crit,shake:dmgCrit,seed:Math.random()*1000 });
   }
 
   function densityScoreAt(candidate, all, r2) {
@@ -1851,7 +1872,7 @@ export async function initEngine() {
     const burst = crit
       ? { r: 22, life: 0.30, spikes: 8, innerRatio: 0.36, lw: 2.2 }
       : { r: 14, life: 0.20, spikes: 6, innerRatio: 0.40, lw: 1.6 };
-    state.rings.push({ x, y, t: burst.life, life: burst.life, r: burst.r, grow: 0,
+    if (state.rings.length < 30) state.rings.push({ x, y, t: burst.life, life: burst.life, r: burst.r, grow: 0,
                        color, crit, spikes: burst.spikes,
                        innerRatio: burst.innerRatio, lw: burst.lw });
 
@@ -1872,7 +1893,7 @@ export async function initEngine() {
       // 프로스트: 얼음 파편(천천히), 캐논: 무거운 파편(짧게), 테슬라: 전기 호(빠르게)
       const grav  = isFrost ? 20 : isCannon ? 80 : 30;
       const fric  = isFrost ? 0.88 : isCannon ? 0.78 : 0.82;
-      state.puffs.push({
+      if (state.puffs.length < 180) state.puffs.push({
         x, y,
         vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
         t: life, life, g: grav, fric,
@@ -1886,7 +1907,7 @@ export async function initEngine() {
       for (let i = 0; i < (crit ? 5 : 3); i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = 30 + Math.random() * 40;
-        state.puffs.push({
+        if (state.puffs.length < 180) state.puffs.push({
           x, y,
           vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd - 25,
           t: 0.30 + Math.random()*0.20, life: 0.50,
@@ -1917,7 +1938,7 @@ export async function initEngine() {
       const ang=Math.random()*Math.PI*2;
       const spd=(40+Math.random()*120)*power*(0.75+0.25*vfx);
       const life=0.45+Math.random()*0.25;
-      state.puffs.push({ x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-10,t:life,life,g:90,fric:0.90,r:2+Math.random()*3,color });
+      if (state.puffs.length < 180) state.puffs.push({ x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-10,t:life,life,g:90,fric:0.90,r:2+Math.random()*3,color });
     }
   }
 
@@ -2231,17 +2252,14 @@ export async function initEngine() {
       }
     }
 
-    // 앰비언트 파티클
+    // 앰비언트 파티클 (shadowBlur 제거로 성능 개선)
     const now = perfNow() / 1000;
     for (const p of state.bgParticles) {
       const pulse = 0.5 + 0.5 * Math.sin(p.pulse + now * p.pulseSpeed);
       ctx.globalAlpha = p.a * (0.5 + 0.5 * pulse);
       ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 5 * pulse;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.7 + 0.3 * pulse), 0, Math.PI * 2); ctx.fill();
     }
-    ctx.shadowBlur = 0;
 
     // 비넷 (테두리 어둡게)
     ctx.globalAlpha = 1;
@@ -3722,7 +3740,6 @@ ${buildKeyboardShortcutHelpHTML()}
   if (gameoverSkillBtn) gameoverSkillBtn.addEventListener("click",()=>openSkillTree());
   if (skillCloseBtn) skillCloseBtn.addEventListener("click",()=>closeSkillTree());
   if (skillOverlay) skillOverlay.addEventListener("pointerdown",(ev)=>{ if(ev.target===skillOverlay) closeSkillTree(); });
-  window.addEventListener("resize",()=>{ if(skillOverlay&&!skillOverlay.classList.contains("hidden")) requestAnimationFrame(drawSkillLines); });
 
   speedBtn.addEventListener("click",()=>cycleSpeed(state, syncTopUI));
 
