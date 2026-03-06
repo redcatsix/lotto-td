@@ -225,18 +225,54 @@ button:focus-visible{outline:2px solid rgba(116,192,252,0.9);outline-offset:2px}
 
 .hidden{display:none !important;}
 
-#tooltip-panel{width:320px;}
+#tooltip-panel{width:340px;}
 #tt-title{font-weight:800;letter-spacing:0.2px;margin:0 0 6px 0;}
 #tt-sub{margin:0 0 8px 0;font-size:12px;color:rgba(255,255,255,0.70);}
 #tt-stats,#tt-options{font-size:13px;line-height:1.35;white-space:pre-line;max-height:220px;overflow:auto;padding-right:6px;}
-#tt-options{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.10);}
-#tt-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
-#tt-actions button{flex:1 1 140px;padding:10px 12px;}
+#tt-options{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.10);white-space:normal;}
+#tt-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+#tt-actions button{flex:1 1 100px;padding:8px 10px;font-size:12px;}
 
 #mod-btn{background:rgba(116,192,252,0.16);border-color:rgba(116,192,252,0.30)}
+#type-reroll-btn{background:rgba(99,230,190,0.14);border-color:rgba(99,230,190,0.30)}
 #awaken-btn{background:rgba(255,107,107,0.16);border-color:rgba(255,107,107,0.30)}
 #reroll-btn{background:rgba(173,181,189,0.12);border-color:rgba(173,181,189,0.22)}
 #legend-reroll-btn{background:rgba(177,151,252,0.16);border-color:rgba(177,151,252,0.30)}
+
+/* 옵션 핀 버튼 */
+.opt-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;}
+.pin-btn{
+  background:none;border:none;padding:0 2px;cursor:pointer;
+  font-size:12px;line-height:1;opacity:0.55;transition:opacity 0.15s;min-width:18px;
+}
+.pin-btn:hover{opacity:1;}
+
+/* 옵션 변화 화살표 */
+.opt-up{color:#63e6be;font-size:10px;margin-right:2px;font-weight:900;}
+.opt-dn{color:#ff6b6b;font-size:10px;margin-right:2px;font-weight:900;}
+.opt-eq{color:rgba(255,255,255,0.35);font-size:10px;margin-right:2px;}
+
+/* 개조 미리보기 */
+.mod-preview-banner{
+  font-size:11px;font-weight:800;color:#74c0fc;
+  margin-bottom:6px;padding:4px 6px;
+  background:rgba(116,192,252,0.10);border-radius:6px;
+  border:1px solid rgba(116,192,252,0.22);
+}
+.mod-opt-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px;flex-wrap:wrap;}
+.mod-arrow{color:rgba(255,255,255,0.40);font-size:11px;flex-shrink:0;}
+.mod-preview-actions{display:flex;gap:8px;margin-top:8px;}
+.mod-preview-actions button{flex:1;padding:7px 10px;font-size:12px;}
+#mod-accept-btn{background:rgba(99,230,190,0.18);border-color:rgba(99,230,190,0.40);color:#63e6be;font-weight:800;}
+#mod-cancel-btn{background:rgba(255,107,107,0.12);border-color:rgba(255,107,107,0.28);}
+
+/* 티켓 환불 플래시 */
+.ticket-flash{animation:ticketPop 0.5s ease-out;}
+@keyframes ticketPop{
+  0%{transform:scale(1);}
+  35%{transform:scale(1.22);background:rgba(99,230,190,0.30);}
+  100%{transform:scale(1);}
+}
 
 .modal-overlay{
   position:fixed;inset:0;background:rgba(0,0,0,0.55);

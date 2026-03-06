@@ -240,6 +240,7 @@ export async function initEngine() {
   const awakenBtn = document.getElementById("awaken-btn");
   const rerollBtn = document.getElementById("reroll-btn");
   const legendRerollBtn = document.getElementById("legend-reroll-btn");
+  const typeRerollBtn = document.getElementById("type-reroll-btn");
 
   const helpOverlay = document.getElementById("help-overlay");
   const helpClose = document.getElementById("help-close");
@@ -365,6 +366,7 @@ export async function initEngine() {
     userPause: false,
     vfxEnabled: initialVfxEnabled,
     pendingSpecial: null,
+    pendingMod: null,      // { key, previewOpts, cost } — 개조 미리보기
     banner: { title: "", sub: "", t: 0 },
     stageStats: makeStageStats(1),
     stageFury: null,
@@ -825,13 +827,65 @@ export async function initEngine() {
       if (unit.auraOn) lines.push(`오라 버프 ON: 사거리 x${unit.auraRangeMul.toFixed(2)} / 치명 x${unit.auraCritChanceMul.toFixed(2)}`);
     }
     ttStats.textContent = lines.join("\n");
-    const optLines = [];
-    for (const opt of unit.options) {
-      optLines.push({ text: formatOption(opt), color: rarityColor(opt.rarity), rarity: opt.rarity });
-    }
-    ttOptions.innerHTML = optLines.map((o) => `<div style="color:${o.color}; font-weight:${rarityRank(o.rarity)>=3?800:600};">${safeText(o.text)}</div>`).join("");
+
+    // ── 옵션 표시: 핀 버튼 + 이전/현재 비교 ──
     const isMythic = unit.itemRarity === ITEM_RARITY.MYTHIC;
     const key = cellKey(unit.r, unit.c);
+    const pm = state.pendingMod && state.pendingMod.key === key ? state.pendingMod : null;
+    const pins = Array.isArray(unit.pinnedOptionIdxs) ? unit.pinnedOptionIdxs : [];
+    const prevOpts = unit.prevOptions && unit.prevOptionsTimer > 0 ? unit.prevOptions : null;
+
+    if (pm) {
+      // 개조 미리보기 모드: 현재 vs 예정 옵션 나란히
+      let previewHtml = `<div class="mod-preview-banner">⚡ 개조 미리보기 (레어 ${pm.cost}개)</div>`;
+      const maxLen = Math.max(unit.options.length, pm.previewOpts.length);
+      for (let i = 0; i < maxLen; i++) {
+        const cur = unit.options[i]; const nxt = pm.previewOpts[i];
+        const isPinned = pins.includes(i);
+        const curHtml = cur ? `<span style="color:${rarityColor(cur.rarity)};opacity:0.55;text-decoration:line-through;">${safeText(formatOption(cur))}</span>` : "";
+        const nxtHtml = nxt ? `<span style="color:${rarityColor(nxt.rarity)};font-weight:${rarityRank(nxt.rarity)>=3?800:600};">${isPinned?"📌 ":""}${safeText(formatOption(nxt))}</span>` : "";
+        previewHtml += `<div class="mod-opt-row">${curHtml}<span class="mod-arrow">→</span>${nxtHtml}</div>`;
+      }
+      previewHtml += `<div class="mod-preview-actions"><button id="mod-accept-btn">✓ 수락</button><button id="mod-cancel-btn">✗ 취소</button></div>`;
+      ttOptions.innerHTML = previewHtml;
+      const acceptBtn = document.getElementById("mod-accept-btn");
+      const cancelBtn = document.getElementById("mod-cancel-btn");
+      if (acceptBtn) acceptBtn.addEventListener("click", () => acceptModPreview());
+      if (cancelBtn) cancelBtn.addEventListener("click", () => cancelModPreview());
+    } else {
+      // 일반 모드: 핀 버튼 + before/after 비교 화살표
+      let optHtml = "";
+      for (let i = 0; i < unit.options.length; i++) {
+        const opt = unit.options[i];
+        const isPinned = pins.includes(i);
+        const pinLabel = isPinned ? "📌" : "📍";
+        const pinTip = isPinned ? "고정 해제" : "개조 시 유지";
+        let changeArrow = "";
+        if (prevOpts && prevOpts[i]) {
+          const pv = prevOpts[i];
+          if (rarityRank(opt.rarity) > rarityRank(pv.rarity) || opt.value > pv.value + 0.001) changeArrow = `<span class="opt-up">▲</span>`;
+          else if (rarityRank(opt.rarity) < rarityRank(pv.rarity) || opt.value < pv.value - 0.001) changeArrow = `<span class="opt-dn">▼</span>`;
+          else changeArrow = `<span class="opt-eq">─</span>`;
+        }
+        const fw = rarityRank(opt.rarity)>=3?800:600;
+        optHtml += `<div class="opt-row"><button class="pin-btn" data-pin="${i}" title="${safeText(pinTip)}">${pinLabel}</button><span style="color:${rarityColor(opt.rarity)};font-weight:${fw};">${changeArrow}${safeText(formatOption(opt))}</span></div>`;
+      }
+      ttOptions.innerHTML = optHtml;
+      // 핀 이벤트 위임
+      ttOptions.querySelectorAll(".pin-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.dataset.pin);
+          const u2 = state.units.get(state.selectedKey); if (!u2) return;
+          if (!Array.isArray(u2.pinnedOptionIdxs)) u2.pinnedOptionIdxs = [];
+          const pos = u2.pinnedOptionIdxs.indexOf(idx);
+          if (pos >= 0) u2.pinnedOptionIdxs.splice(pos, 1);
+          else if (u2.pinnedOptionIdxs.length < 2) u2.pinnedOptionIdxs.push(idx); // 최대 2핀
+          else { state.msg={text:"최대 2개까지 고정 가능",t:0.8}; }
+          buildTooltip(u2);
+        });
+      });
+    }
+
     const hk = hotKindForKey(key);
     const hotMul = hotMulForKey(key);
     const ha = state.hotAspdBonus ?? HOTZONE_ASPD_BONUS_BASE;
@@ -848,20 +902,32 @@ export async function initEngine() {
       : (streak>=1 ? `연속 리롤: ${streak}/${REROLL_STREAK_NEED} (${bonusHint})` : `연속 리롤: 0/${REROLL_STREAK_NEED}`);
     const ob = optionBoostForUnit(unit);
     const optBoostLine = ob > 0 ? `옵션 각인: <b style="color:${rarityColor(nextRarity(unit.itemRarity))};">+${ob}</b>` : "";
-    modBtn.disabled = state.econ.tickets.rare <= 0;
+
+    // 핀 현황 표시
+    const pinCount = pins.length;
+    const modCost = 1 + pinCount;
+    const modLabel = pinCount > 0 ? `개조 (레어${modCost})` : "개조";
+
+    const typeRerollBtn = document.getElementById("type-reroll-btn");
+    modBtn.textContent = pm ? "개조 수락" : modLabel;
+    modBtn.disabled = pm ? state.econ.tickets.rare < (pm.cost) : state.econ.tickets.rare < modCost;
+    if (typeRerollBtn) typeRerollBtn.disabled = state.econ.tickets.common <= 0 || state.econ.tickets.rare <= 0;
     awakenBtn.disabled = isMythic || state.econ.tickets.legend <= 0;
     rerollBtn.disabled = state.econ.tickets.common <= 0;
     legendRerollBtn.disabled = isMythic || state.econ.tickets.legend <= 0 || state.econ.tickets.common < (state.legendRerollCommonCost ?? LEGEND_REROLL_COMMON_COST_BASE);
-    ttHint.innerHTML = `<span style="color:${color}; font-weight:800;">${rName}</span> 일반=뽑기/리롤 · 레어=개조 · 전설=각성/전설리롤(전설1+일반${state.legendRerollCommonCost??LEGEND_REROLL_COMMON_COST_BASE})`
+    ttHint.innerHTML = `<span style="color:${color}; font-weight:800;">${rName}</span> 리롤=일반 · 타입고정=일반+레어 · 개조=레어${modCost>1?modCost:""} · 각성=전설`
       + (hotLine ? `<br/>${hotLine}` : "")
       + (optBoostLine ? `<br/>${optBoostLine}` : "")
       + `<br/>${streakLine}`
+      + (pinCount > 0 ? `<br/><span style="color:#74c0fc;">📌 ${pinCount}개 고정 (개조 시 유지, 비용 +${pinCount}레어)</span>` : "")
       + (isMythic ? `<br/><b style="color:${rarityColor(ITEM_RARITY.MYTHIC)};">신화는 각성/전설리롤 불가</b>` : "");
   }
 
   function showTooltip(clientX, clientY, key) {
     const unit = state.units.get(key);
     if (!unit) return;
+    // 다른 타워 선택 시 개조 미리보기 초기화
+    if (state.pendingMod && state.pendingMod.key !== key) state.pendingMod = null;
     state.selectedKey = key;
     buyMenu.classList.add("hidden");
     buildTooltip(unit);
@@ -1278,9 +1344,10 @@ export async function initEngine() {
 
   function effectLabel(kind) {
     switch (kind) {
-      case "RARITY_UP": return "등급 뻥 (베스트오브4)";
-      case "OPTION_UP": return "옵션 각인 (+1, 유지)";
-      case "HOT_OVERDRIVE": return "HOT 2배 (이번 스테이지)";
+      case "RARITY_UP":    return "강화 계승 — 타입 유지 + 등급 +1";
+      case "NEW_TOWER":    return "완전 갱신 — 새 타입 + 고품질 등급";
+      case "OPTION_UP":   return "옵션 각인 — 타입·등급 유지, 옵션 상향";
+      case "HOT_OVERDRIVE": return "HOT 오버드라이브 — HOT 효과 2배";
       case "REROLL_REFUND": return "티켓 환급 (+1 일반)";
       default: return "SPECIAL";
     }
@@ -1574,21 +1641,58 @@ export async function initEngine() {
     u.optBoost = prev.optBoost ?? 0;
     u.totalDamage = prev.totalDamage ?? 0;
     u.dpsMeter = prev.dpsMeter ?? 0;
+    // 이전 옵션 비교용 — 리롤/개조 직후 before/after 표시
+    if (prev.prevOptions) { u.prevOptions = prev.prevOptions; u.prevOptionsTimer = prev.prevOptionsTimer ?? 0; }
+    // 핀 초기화 (새 옵션 세트 적용 후)
+    u.pinnedOptionIdxs = [];
     applyMetaToUnit(u);
     u.cd = Math.min(prev.cd, u.cooldown);
     state.units.set(key, u);
     recordBestRoll(u.type, u.itemRarity);
   }
 
+  function acceptModPreview() {
+    const pm = state.pendingMod; if (!pm) return;
+    const { key, previewOpts, cost } = pm;
+    const u = state.units.get(key); if (!u) return;
+    if (state.econ.tickets.rare < cost) { state.msg={text:`레어 티켓 ${cost} 필요`,t:0.8}; return; }
+    state.econ.tickets.rare -= cost;
+    u.prevOptions = [...u.options];
+    u.prevOptionsTimer = 4.0;
+    state.pendingMod = null;
+    rebuildUnitAtKey(key, u.type, u.itemRarity, previewOpts);
+    const nu = state.units.get(key);
+    if (nu) { nu.prevOptions = u.prevOptions; nu.prevOptionsTimer = 4.0; nu.pinnedOptionIdxs = []; }
+    syncTopUI(); buildTooltip(nu ?? u);
+  }
+
+  function cancelModPreview() {
+    state.pendingMod = null;
+    if (state.selectedKey) buildTooltip(state.units.get(state.selectedKey));
+  }
+
   function modSelectedUnit() {
     const key = state.selectedKey; if (!key) return;
     const u = state.units.get(key); if (!u) return;
-    if (state.econ.tickets.rare <= 0) { state.msg={text:"레어 티켓 부족",t:0.8}; return; }
-    state.econ.tickets.rare -= 1;
+
+    // 이미 이 타워의 미리보기가 열려 있으면 수락으로 처리
+    if (state.pendingMod && state.pendingMod.key === key) { acceptModPreview(); return; }
+
+    const pins = Array.isArray(u.pinnedOptionIdxs) ? u.pinnedOptionIdxs.filter(i => i >= 0 && i < u.options.length) : [];
+    const cost = 1 + pins.length; // 핀 1개당 레어 티켓 +1
+    if (state.econ.tickets.rare < cost) { state.msg={text:`레어 티켓 ${cost} 필요`,t:0.8}; return; }
+
+    // 미리보기 옵션 생성
     const optCap = optionCapRarityForUnit(u);
-    const opts = rollOptions(u.type, optCap);
-    rebuildUnitAtKey(key, u.type, u.itemRarity, opts);
-    syncTopUI(); buildTooltip(state.units.get(key));
+    const freshOpts = rollOptions(u.type, optCap);
+    // 핀된 옵션은 원본 유지
+    const previewOpts = freshOpts.map((opt, i) => {
+      const pinned = pins.find(pi => pi === i);
+      return (pinned != null) ? u.options[i] : opt;
+    });
+
+    state.pendingMod = { key, previewOpts, cost };
+    buildTooltip(u); // 미리보기 UI 포함 tooltip 갱신
   }
 
   function awakenSelectedUnit() {
@@ -1612,11 +1716,17 @@ export async function initEngine() {
     const willSpecial = streak >= REROLL_STREAK_NEED;
     if (state.econ.tickets.common <= 0) { state.msg={text:"일반 티켓 부족",t:0.8}; return; }
     if (!confirmHighRarityReroll("리롤", u, "비용: 일반 1")) return;
+    // 리롤 전 옵션 저장 (비교 표시용)
+    u.prevOptions = [...u.options];
+    u.prevOptionsTimer = 4.0;
     state.econ.tickets.common -= 1;
     const refundCh = state.metaMods?.rerollRefundChance ?? 0;
     if (refundCh > 0 && Math.random() < refundCh) {
       state.econ.tickets.common += 1;
-      addFloater(u.x, u.y-18, "+1 일반", "rgba(255,255,255,0.85)", false);
+      // 환불 시 눈에 잘 띄는 피드백
+      addFloater(u.x, u.y-28, "리롤 환급! +1", "rgba(99,230,190,0.98)", true);
+      const ticketEl = document.getElementById("t-common");
+      if (ticketEl) { ticketEl.parentElement?.classList.add("ticket-flash"); setTimeout(() => ticketEl.parentElement?.classList.remove("ticket-flash"), 600); }
     }
     if (willSpecial) { state.rerollStreak={key:null, count:0}; }
     else {
@@ -1624,24 +1734,46 @@ export async function initEngine() {
       state.rerollStreak = { key, count: nextCount };
     }
     if (willSpecial) {
-      const kinds = isHot ? shuffledCopy(["RARITY_UP","OPTION_UP","HOT_OVERDRIVE"]) : shuffledCopy(["RARITY_UP","OPTION_UP","REROLL_REFUND"]);
+      const baseBoost = optionBoostForUnit(u);
       const candidates = [];
-      const usedTypes = new Set();
-      for (const kind of kinds) {
-        let nt = rollUnitType(); let guard = 8;
-        while (guard-- > 0 && usedTypes.has(nt)) nt = rollUnitType();
-        usedTypes.add(nt);
-        let nr = rollItemRarityForDrawWithMeta();
-        if (kind==="RARITY_UP") {
-          const all = [rollItemRarityForDrawWithMeta(),rollItemRarityForDrawWithMeta(),rollItemRarityForDrawWithMeta(),nr];
-          all.sort((x,y) => rarityRank(y)-rarityRank(x)); nr=all[0];
-          if (rarityRank(nr)<rarityRank(ITEM_RARITY.MAGIC)) nr=ITEM_RARITY.MAGIC;
-        }
-        const baseBoost = optionBoostForUnit(u);
-        const newBoost = Math.max(0, Math.min(2, baseBoost + (kind==="OPTION_UP"?1:0)));
-        const opts = rollOptions(nt, applyRarityBoost(nr, newBoost));
-        candidates.push({ kind, nt, nr, opts, optBoost: newBoost });
+
+      // A: 강화 계승 — 타입 유지, 등급 +1, 새 옵션
+      {
+        const nt = u.type;
+        const nr = rarityRank(u.itemRarity) >= rarityRank(ITEM_RARITY.MYTHIC)
+          ? ITEM_RARITY.MYTHIC : nextRarity(u.itemRarity);
+        const optCap = applyRarityBoost(nr, baseBoost);
+        const opts = rollOptions(nt, optCap);
+        candidates.push({ kind: "RARITY_UP", nt, nr, opts, optBoost: baseBoost });
       }
+
+      // B: 완전 갱신 — 다른 타입, 고품질 등급 (RARE 이상 보장, 베스트오브4), 베스트오브3 옵션
+      {
+        let nt = rollUnitType(); let guard = 8;
+        while (guard-- > 0 && nt === u.type) nt = rollUnitType();
+        const rarityRolls = [1,2,3,4].map(() => rollItemRarityForDrawWithMeta());
+        rarityRolls.sort((a, b) => rarityRank(b) - rarityRank(a));
+        let nr = rarityRolls[0];
+        if (rarityRank(nr) < rarityRank(ITEM_RARITY.RARE)) nr = ITEM_RARITY.RARE;
+        nr = applyRarityUpChances(nr);
+        const optCap = applyRarityBoost(nr, baseBoost);
+        const opts = rollOptionsBestOf(3, rollOptions, nt, optCap, rarityRank, OPTION_KIND);
+        candidates.push({ kind: "NEW_TOWER", nt, nr, opts, optBoost: baseBoost });
+      }
+
+      // C: 옵션 각인 (HOT ZONE이면 HOT 오버드라이브) — 타입·등급 유지, optBoost+1
+      if (isHot) {
+        const nt = u.type; const nr = u.itemRarity;
+        const newBoost = Math.min(2, baseBoost + 1);
+        const opts = rollOptions(nt, applyRarityBoost(nr, newBoost));
+        candidates.push({ kind: "HOT_OVERDRIVE", nt, nr, opts, optBoost: newBoost });
+      } else {
+        const nt = u.type; const nr = u.itemRarity;
+        const newBoost = Math.min(2, baseBoost + 1);
+        const opts = rollOptions(nt, applyRarityBoost(nr, newBoost));
+        candidates.push({ kind: "OPTION_UP", nt, nr, opts, optBoost: newBoost });
+      }
+
       state.msg={text:"SPECIAL PICK!",t:0.8}; openSpecialPick(key, candidates); syncTopUI(); return;
     }
     const nt = rollUnitType();
@@ -1655,6 +1787,49 @@ export async function initEngine() {
     rebuildUnitAtKey(key, nt, nr, opts);
     const bonusTag = bestOf>1 ? ` (BONUSx${bestOf})` : "";
     state.msg={text:`${rarityName(nr)} ${UNIT_DEFS[nt]?.name??nt}${bonusTag}`,t:0.8};
+    syncTopUI(); buildTooltip(state.units.get(key));
+  }
+
+  function typeRerollSelectedUnit() {
+    const key = state.selectedKey; if (!key) return;
+    const u = state.units.get(key); if (!u) return;
+    if (state.econ.tickets.common <= 0) { state.msg={text:"일반 티켓 부족",t:0.8}; return; }
+    if (state.econ.tickets.rare <= 0) { state.msg={text:"레어 티켓 부족",t:0.8}; return; }
+    if (!confirmHighRarityReroll("타입고정리롤", u, "비용: 일반1 + 레어1")) return;
+
+    u.prevOptions = [...u.options];
+    u.prevOptionsTimer = 4.0;
+    state.econ.tickets.common -= 1;
+    state.econ.tickets.rare -= 1;
+
+    // 환불 체크
+    const refundCh = state.metaMods?.rerollRefundChance ?? 0;
+    if (refundCh > 0 && Math.random() < refundCh) {
+      state.econ.tickets.common += 1;
+      addFloater(u.x, u.y-28, "환급! +1 일반", "rgba(99,230,190,0.98)", true);
+    }
+
+    // 현재 등급 이상 보장, 베스트오브3 등급 롤
+    const minRankVal = rarityRank(u.itemRarity);
+    const rolls = [1,2,3].map(() => rollItemRarityForDrawWithMeta());
+    rolls.sort((a, b) => rarityRank(b) - rarityRank(a));
+    let nr = rolls[0];
+    if (rarityRank(nr) < minRankVal) nr = u.itemRarity;
+    nr = applyRarityUpChances(nr);
+
+    const streak = state.rerollStreak.key===key ? state.rerollStreak.count : 0;
+    const bestOfBonus = state.metaMods?.streakBestOfBonus ?? 0;
+    const bestOf = Math.min(3, 1 + bestOfBonus + (streak >= 1 ? 1 : 0));
+    const optCap = applyRarityBoost(nr, optionBoostForUnit(u));
+    const opts = bestOf > 1 ? rollOptionsBestOf(bestOf, rollOptions, u.type, optCap, rarityRank, OPTION_KIND) : rollOptions(u.type, optCap);
+
+    // 스트릭 리셋 (타입 고정 리롤은 같은 타입이므로 streak 유지)
+    state.rerollStreak = { key, count: streak + 1 };
+
+    rebuildUnitAtKey(key, u.type, nr, opts);
+    const nu = state.units.get(key);
+    if (nu) { nu.prevOptions = u.prevOptions; nu.prevOptionsTimer = 4.0; }
+    state.msg={text:`타입고정 → ${rarityName(nr)} ${UNIT_DEFS[u.type]?.name??u.type}`,t:0.9};
     syncTopUI(); buildTooltip(state.units.get(key));
   }
 
@@ -2187,6 +2362,10 @@ export async function initEngine() {
     state.slashes=state.slashes.filter((s)=>s.t>0);
     state.msg.t=Math.max(0,state.msg.t-dt);
     if (state.banner) state.banner.t=Math.max(0,(state.banner.t||0)-dt);
+    // prevOptions 비교 표시 타이머 틱
+    for (const [, u] of state.units) {
+      if ((u.prevOptionsTimer ?? 0) > 0) { u.prevOptionsTimer = Math.max(0, u.prevOptionsTimer - dt); if (u.prevOptionsTimer <= 0) u.prevOptions = null; }
+    }
     if (state.screenShake) {
       const s=state.screenShake;
       if ((s.t||0)>0) {
@@ -3436,11 +3615,45 @@ export async function initEngine() {
 
     if (!state.gameOver&&state.selectedKey) {
       const streak=state.rerollStreak.key===state.selectedKey?state.rerollStreak.count:0;
-      const hk=hotKindForKey(state.selectedKey); const y=logical.h-44;
-      ctx.save(); ctx.font="800 14px ui-sans-serif, system-ui"; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.fillStyle="rgba(255,255,255,0.80)";
-      const s=(streak>=REROLL_STREAK_NEED)?"SPECIAL READY":(streak>=1?`REROLL ${streak}/${REROLL_STREAK_NEED} (BONUS)`:`REROLL ${streak}/${REROLL_STREAK_NEED}`);
-      if (hk) ctx.fillText(`선택: HOT(${hk==="ASPD"?`공속+${Math.round(ha*100)}%`:`치명+${Math.round(hc*100)}%p`}) · ${s}`,x0,y);
-      else ctx.fillText(`선택: ${s}`,x0,y);
+      const hk=hotKindForKey(state.selectedKey);
+      const isReady=streak>=REROLL_STREAK_NEED;
+      const barY=logical.h-46; const segW=18; const segH=10; const segGap=3;
+      const totalBarW=REROLL_STREAK_NEED*(segW+segGap)-segGap;
+      ctx.save();
+      // 배경 패널
+      ctx.fillStyle="rgba(0,0,0,0.32)";
+      roundRect(ctx, x0-5, barY-18, totalBarW+110, 34, 6); ctx.fill();
+      // 라벨
+      ctx.font="700 10px ui-sans-serif, system-ui"; ctx.textAlign="left"; ctx.textBaseline="middle";
+      ctx.fillStyle="rgba(255,255,255,0.55)";
+      ctx.fillText("연속 리롤", x0, barY-9);
+      // 세그먼트 바
+      for (let i=0;i<REROLL_STREAK_NEED;i++) {
+        const sx=x0+i*(segW+segGap);
+        const filled=i<streak||isReady;
+        ctx.fillStyle=isReady?"#ffd43b":(filled?"#74c0fc":"rgba(255,255,255,0.14)");
+        if (isReady) { ctx.shadowColor="#ffd43b"; ctx.shadowBlur=8; }
+        roundRect(ctx, sx, barY, segW, segH, 3); ctx.fill();
+        ctx.shadowBlur=0;
+      }
+      // 상태 텍스트
+      ctx.font="800 11px ui-sans-serif, system-ui"; ctx.textBaseline="middle";
+      if (isReady) {
+        ctx.fillStyle="#ffd43b"; ctx.shadowColor="#ffd43b"; ctx.shadowBlur=10;
+        ctx.fillText("★ SPECIAL!", x0+totalBarW+6, barY+segH/2);
+        ctx.shadowBlur=0;
+      } else if (streak>0) {
+        ctx.fillStyle="rgba(116,192,252,0.88)";
+        ctx.fillText(`→ ${REROLL_STREAK_NEED-streak}회 더`, x0+totalBarW+6, barY+segH/2);
+      } else {
+        ctx.fillStyle="rgba(255,255,255,0.40)";
+        ctx.fillText(`→ ${REROLL_STREAK_NEED}회`, x0+totalBarW+6, barY+segH/2);
+      }
+      // HOT ZONE 정보
+      if (hk) {
+        ctx.font="700 10px ui-sans-serif, system-ui"; ctx.fillStyle="rgba(255,212,59,0.88)";
+        ctx.fillText(`🔥 HOT: ${hk==="ASPD"?`공속+${Math.round(ha*100)}%`:`치명+${Math.round(hc*100)}%p`}`, x0, barY-9+18+segH+2);
+      }
       ctx.restore();
     }
 
@@ -3546,10 +3759,40 @@ export async function initEngine() {
     ctx.restore();
   }
 
+  function drawSelectedRange() {
+    if (!state.selectedKey) return;
+    const u = state.units.get(state.selectedKey);
+    if (!u || u.range <= 0) return;
+    ctx.save();
+    const col = rarityColor(u.itemRarity);
+    if (u.isSupport) {
+      // 지원 타워: 오라 범위 + 범위 내 타워 강조
+      ctx.beginPath(); ctx.arc(u.x, u.y, u.range, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(177,151,252,0.55)"; ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(177,151,252,0.07)"; ctx.fill();
+      const r2 = u.range * u.range;
+      for (const [k, ou] of state.units) {
+        if (k === state.selectedKey || ou.isSupport) continue;
+        if ((ou.x-u.x)**2 + (ou.y-u.y)**2 <= r2) {
+          ctx.beginPath(); ctx.arc(ou.x, ou.y, state.board.pxPerCell * 0.42, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(177,151,252,0.75)"; ctx.lineWidth = 2; ctx.stroke();
+        }
+      }
+    } else {
+      // 공격 타워: 사거리 원
+      ctx.beginPath(); ctx.arc(u.x, u.y, u.range, 0, Math.PI * 2);
+      ctx.strokeStyle = col + "88"; ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = col + "0F"; ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function render() {
     resizeCanvasToDisplay(); setLogicalTransform();
     ctx.clearRect(0,0,logical.w,logical.h);
-    drawBackground(); drawGrid(); drawPath(); drawCore(); drawUnits(); drawEnemies(); drawEffects(); drawHUD();
+    drawBackground(); drawGrid(); drawPath(); drawCore(); drawSelectedRange(); drawUnits(); drawEnemies(); drawEffects(); drawHUD();
   }
 
   // ---------------- Help ----------------
@@ -3604,7 +3847,7 @@ ${buildKeyboardShortcutHelpHTML()}
     const cell=getCellAt(state.board,lx,ly);
     if (!cell||(cell.r===2&&cell.c===2)) { state.drag.hoverCell=null; state.drag.hoverValid=false; return; }
     const k=cellKey(cell.r,cell.c); const occupied=state.units.get(k);
-    let ok=!occupied||(occupied.type===state.drag.unit.type&&occupied.itemRarity===state.drag.unit.itemRarity&&occupied.itemRarity!==ITEM_RARITY.MYTHIC);
+    const ok=!occupied;
     state.drag.hoverCell=cell; state.drag.hoverValid=ok;
   }
 
@@ -3627,18 +3870,7 @@ ${buildKeyboardShortcutHelpHTML()}
       state.units.set(dropKey,d.unit); state.selectedKey=dropKey;
       state.drag={active:false,unit:null,fromKey:null,fromCell:null,x:0,y:0,hoverCell:null,hoverValid:false}; return;
     }
-    const canMerge=target.type===d.unit.type&&target.itemRarity===d.unit.itemRarity;
-    if (canMerge) {
-      if (target.itemRarity===ITEM_RARITY.MYTHIC) { state.msg={text:"신화는 합성 불가",t:0.9}; cancelDrag(); return; }
-      const nr=nextRarity(target.itemRarity); const optCap=applyRarityBoost(nr,optionBoostForUnit(target));
-      const opts=rollOptions(target.type,optCap); rebuildUnitAtKey(dropKey,target.type,nr,opts);
-      const u2=state.units.get(dropKey);
-      if (u2) { addFloater(u2.x,u2.y-22,"MERGE!","rgba(99,230,190,0.95)",true); addHitRing(u2.x,u2.y,"rgba(99,230,190,0.55)",true); }
-      triggerScreenShake(0.28,0.20,14); state.msg={text:`합성! → ${rarityName(nr)}`,t:0.9}; state.selectedKey=dropKey;
-      state.drag={active:false,unit:null,fromKey:null,fromCell:null,x:0,y:0,hoverCell:null,hoverValid:false};
-      syncTopUI(); buildTooltip(state.units.get(dropKey)); return;
-    }
-    state.msg={text:"같은 타입/등급만 합성 가능",t:0.9}; cancelDrag();
+    state.msg={text:"빈 칸으로만 이동 가능",t:0.9}; cancelDrag();
   }
 
   canvas.addEventListener("pointerdown",(ev)=>{
@@ -3729,6 +3961,7 @@ ${buildKeyboardShortcutHelpHTML()}
   awakenBtn.addEventListener("click",()=>awakenSelectedUnit());
   rerollBtn.addEventListener("click",()=>rerollSelectedUnit());
   legendRerollBtn.addEventListener("click",()=>legendRerollSelectedUnit());
+  if (typeRerollBtn) typeRerollBtn.addEventListener("click",()=>typeRerollSelectedUnit());
   helpBtn.addEventListener("click",()=>openHelp());
   helpClose.addEventListener("click",()=>closeHelp());
   helpOverlay.addEventListener("pointerdown",(ev)=>{ if(ev.target===helpOverlay) closeHelp(); });
