@@ -450,3 +450,146 @@ hr{border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;}
 .dps-val{font-size:12px;opacity:0.82;font-variant-numeric:tabular-nums;}
 .dps-bar{margin-top:8px;height:8px;border-radius:999px;background:rgba(0,0,0,0.35);overflow:hidden;border:1px solid rgba(255,255,255,0.08);}
 .dps-bar-fill{height:100%;width:0%;border-radius:999px;transition:width 0.30s ease,opacity 0.30s ease;background:linear-gradient(90deg,rgba(99,230,190,0.80),rgba(116,192,252,0.70));}
+
+/* ==============================
+   모바일 전용 UI (≤640px)
+   PC(>640px) 완전히 변경 없음
+   ============================== */
+
+/* 기본 정의 (항상, PC에서는 숨김) */
+#mobile-tab-bar { display: none; }
+#mobile-sheet-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 39;
+}
+#mobile-sheet-overlay.visible { display: block; }
+.sheet-handle { display: none; }
+.sheet-tabs { display: none; }
+
+/* 모바일 하단 탭바 스타일 (항상 정의, 모바일에서만 표시) */
+#mobile-tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 56px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: linear-gradient(0deg, rgba(7,16,35,1.0), rgba(10,18,38,0.98));
+  border-top: 1px solid rgba(255,255,255,0.12);
+  z-index: 50;
+  gap: 0;
+}
+.mobile-tab {
+  flex: 1; background: none; border: none;
+  color: rgba(255,255,255,0.48); letter-spacing: 0.2px;
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  padding: 4px 2px;
+  transition: color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.mobile-tab.active { color: #74c0fc; background: rgba(116,192,252,0.08); }
+.mobile-tab .tab-icon { font-size: 18px; line-height: 1; }
+.mobile-tab .tab-label { font-size: 10px; }
+
+@media (max-width: 640px) {
+  /* 앱 하단 패딩 (탭바 56px 공간) */
+  #app { padding-bottom: 56px; }
+
+  /* 탭바 노출 */
+  #mobile-tab-bar { display: flex; }
+
+  /* ── 상단바 컴팩트 ── */
+  #top-ui { padding: 5px 10px; gap: 5px; }
+  #top-left { gap: 4px; }
+  .pill { font-size: 11px; padding: 3px 7px; }
+  .badge { font-size: 11px; padding: 2px 7px; }
+  #top-right { gap: 4px; }
+  #top-right button { font-size: 11px; padding: 4px 8px; min-width: 0; }
+  /* VFX·도움말은 탭바로 이동했으므로 상단에서 숨김 */
+  #vfx-btn, #help-btn, #skill-btn { display: none; }
+  /* 속도·일시정지도 탭바에 있으므로 상단에서 숨김 */
+  #speed-btn, #pause-btn { display: none; }
+
+  /* ── 캔버스 영역 ── */
+  #stage-area { gap: 0; padding: 0; }
+  #gameCanvas {
+    border-radius: 0 !important;
+    border-left: none; border-right: none;
+  }
+
+  /* ── side-ui → 슬라이딩 바텀 시트 ── */
+  #side-ui {
+    position: fixed !important;
+    bottom: 56px; left: 0; right: 0;
+    width: 100% !important; max-width: none !important;
+    max-height: 62vh;
+    overflow-y: auto; overflow-x: hidden;
+    z-index: 40;
+    flex-direction: column;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    border-top: 1px solid rgba(255,255,255,0.18);
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    background: linear-gradient(160deg, rgba(14,20,32,0.99), rgba(8,12,22,0.99));
+    padding: 0 12px 16px;
+    gap: 0;
+    backdrop-filter: blur(14px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+  }
+  #side-ui.sheet-open { transform: translateY(0); }
+
+  /* 시트 내부 탭 전환 */
+  #side-ui[data-tab="shop"] #dps-panel { display: none !important; }
+  #side-ui[data-tab="dps"]  #shop-panel { display: none !important; }
+  #side-ui #dps-panel { margin-top: 0; }
+  #side-ui #shop-panel {
+    border: none; padding: 0;
+    background: none; box-shadow: none; backdrop-filter: none;
+  }
+
+  /* 드래그 핸들 */
+  .sheet-handle {
+    display: block;
+    width: 44px; height: 4px;
+    background: rgba(255,255,255,0.20);
+    border-radius: 2px;
+    margin: 10px auto 6px;
+    flex-shrink: 0;
+  }
+
+  /* 내부 탭 (상점/DPS 전환) */
+  .sheet-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+  .sheet-tab {
+    flex: 1; padding: 8px 0; text-align: center;
+    font-size: 12px; font-weight: 700;
+    color: rgba(255,255,255,0.42);
+    cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sheet-tab.active { color: #74c0fc; border-bottom-color: #74c0fc; }
+
+  /* 상점 스크롤 제거 (시트 자체가 스크롤함) */
+  .shop-scroll { max-height: none; overflow: visible; }
+
+  /* 상점 아이템 터치 타겟 확대 */
+  .shop-item { padding: 11px 12px; }
+
+  /* ── 메뉴 (buy-menu / tooltip): 시트 위 중앙 하단 ── */
+  /* clampMenuToViewport() JS에서 isMobileUI() 분기로 처리 */
+
+  /* ── 모달 전체 너비 ── */
+  .modal { width: calc(100vw - 16px) !important; max-height: 88vh; }
+  .special-cards { grid-template-columns: 1fr !important; }
+  .skill-layout { flex-direction: column; }
+  .skill-detail { width: 100% !important; }
+  .skill-tree-wrap { min-height: 420px; }
+}

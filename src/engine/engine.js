@@ -202,7 +202,19 @@ export async function initEngine() {
   const elShopRare = document.getElementById("shop-rare");
   const elShopLegend = document.getElementById("shop-legend");
 
+  const sideUi = document.getElementById("side-ui");
   const dpsPanel = document.getElementById("dps-panel");
+
+  // 모바일 전용 DOM
+  const mobileTabShop  = document.getElementById("mob-tab-shop");
+  const mobileTabDps   = document.getElementById("mob-tab-dps");
+  const mobileTabCtrl  = document.getElementById("mob-tab-ctrl");
+  const mobileTabPause = document.getElementById("mob-tab-pause");
+  const mobSpeedIcon   = document.getElementById("mob-speed-icon");
+  const mobPauseIcon   = document.getElementById("mob-pause-icon");
+  const sheetOverlay   = document.getElementById("mobile-sheet-overlay");
+  const sheetTabShop   = document.getElementById("sheet-tab-shop");
+  const sheetTabDps    = document.getElementById("sheet-tab-dps");
   const dpsRows = [1, 2, 3].map((i) => ({
     name: document.getElementById(`dps-name-${i}`),
     val: document.getElementById(`dps-val-${i}`),
@@ -453,6 +465,10 @@ export async function initEngine() {
     }
     syncMetaUI();
     speedBtn.textContent = `${state.timeScale}x`;
+    // 모바일 탭바 아이콘 동기화
+    if (mobSpeedIcon) mobSpeedIcon.textContent = `${state.timeScale}x`;
+    if (mobPauseIcon) mobPauseIcon.textContent = state.userPause ? "▶" : "⏸";
+    if (mobileTabPause) mobileTabPause.classList.toggle("active", !!state.userPause);
     if (vfxBtn) {
       const on = !!state.vfxEnabled;
       vfxBtn.textContent = on ? "FX ON" : "FX OFF";
@@ -553,6 +569,28 @@ export async function initEngine() {
     }
   }
 
+  // ── 모바일 UI 헬퍼 ──
+  function isMobileUI() { return window.innerWidth <= 640; }
+
+  function openMobileSheet(tab) {
+    if (!sideUi) return;
+    sideUi.dataset.tab = tab;
+    sideUi.classList.add("sheet-open");
+    if (sheetOverlay) sheetOverlay.classList.add("visible");
+    if (sheetTabShop) sheetTabShop.classList.toggle("active", tab === "shop");
+    if (sheetTabDps)  sheetTabDps.classList.toggle("active",  tab === "dps");
+    if (mobileTabShop) mobileTabShop.classList.toggle("active", tab === "shop");
+    if (mobileTabDps)  mobileTabDps.classList.toggle("active",  tab === "dps");
+  }
+
+  function closeMobileSheet() {
+    if (!sideUi) return;
+    sideUi.classList.remove("sheet-open");
+    if (sheetOverlay) sheetOverlay.classList.remove("visible");
+    if (mobileTabShop) mobileTabShop.classList.remove("active");
+    if (mobileTabDps)  mobileTabDps.classList.remove("active");
+  }
+
   function hideMenus() {
     buyMenu.classList.add("hidden");
     tooltip.classList.add("hidden");
@@ -564,10 +602,27 @@ export async function initEngine() {
     const pad = 10;
     el.style.left = "0px"; el.style.top = "0px";
     el.classList.remove("hidden");
+    if (isMobileUI()) {
+      // 모바일: 탭바 위 화면 중앙 하단 고정
+      el.style.position = "fixed";
+      el.style.bottom   = "66px";   // 탭바(56) + 여백(10)
+      el.style.top      = "";
+      el.style.left     = "50%";
+      el.style.transform = "translateX(-50%)";
+      el.style.width    = "calc(100vw - 24px)";
+      el.style.maxWidth = "420px";
+      return;
+    }
+    // PC: 기존 포인터 위치 기반
+    el.style.position  = "fixed";
+    el.style.bottom    = "";
+    el.style.transform = "";
+    el.style.width     = "";
+    el.style.maxWidth  = "";
     const r = el.getBoundingClientRect();
     const vw = window.innerWidth, vh = window.innerHeight;
     el.style.left = `${Math.floor(clamp(x, pad, vw - r.width - pad))}px`;
-    el.style.top = `${Math.floor(clamp(y, pad, vh - r.height - pad))}px`;
+    el.style.top  = `${Math.floor(clamp(y, pad, vh - r.height - pad))}px`;
   }
 
   function showBuyMenu(clientX, clientY, cell) {
@@ -3674,6 +3729,31 @@ ${buildKeyboardShortcutHelpHTML()}
   if (vfxBtn) vfxBtn.addEventListener("click",()=>toggleVfx(state, saveBoolLS, LS_KEY_VFX, syncTopUI));
 
   if (pauseBtn) pauseBtn.addEventListener("click",()=>togglePause(state, syncTopUI));
+
+  // ── 모바일 탭바 이벤트 ──
+  if (mobileTabShop) mobileTabShop.addEventListener("click", () => {
+    if (sideUi.classList.contains("sheet-open") && sideUi.dataset.tab === "shop") closeMobileSheet();
+    else openMobileSheet("shop");
+  });
+  if (mobileTabDps) mobileTabDps.addEventListener("click", () => {
+    if (sideUi.classList.contains("sheet-open") && sideUi.dataset.tab === "dps") closeMobileSheet();
+    else openMobileSheet("dps");
+  });
+  if (mobileTabCtrl) mobileTabCtrl.addEventListener("click", () => {
+    cycleSpeed(state, syncTopUI);
+  });
+  if (mobileTabPause) mobileTabPause.addEventListener("click", () => {
+    togglePause(state, syncTopUI);
+  });
+  // 내부 시트 탭 전환
+  if (sheetTabShop) sheetTabShop.addEventListener("click", () => openMobileSheet("shop"));
+  if (sheetTabDps)  sheetTabDps.addEventListener("click",  () => openMobileSheet("dps"));
+  // 오버레이 클릭으로 닫기
+  if (sheetOverlay) sheetOverlay.addEventListener("click", closeMobileSheet);
+  // 화면 회전·리사이즈 시 시트 닫기 (PC로 전환 시)
+  window.addEventListener("resize", () => {
+    if (!isMobileUI()) closeMobileSheet();
+  });
 
   if (restartBtn) restartBtn.addEventListener("click",()=>window.location.reload());
 
