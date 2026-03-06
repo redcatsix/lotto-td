@@ -25,14 +25,12 @@ import {
 
 import {
   SKILL_NODES,
-  SKILL_BRANCHES,
   SKILL_MAX_LEVEL,
   loadMetaState,
   saveMetaState,
   computeSkillMods,
   canUpgradeSkill,
   getSkillLevel,
-  isTierUnlocked,
   skillUpgradeCost,
 } from "../systems/skills.js";
 
@@ -94,6 +92,7 @@ function createBoardLayout(viewW, viewH) {
       const y = gridY + r * (cell + gap);
       cells.push({ r, c, x, y, w: cell, h: cell });
     }
+    skillLines.appendChild(frag);
   }
 
   const innerX = gridX + 1 * (cell + gap);
@@ -273,7 +272,8 @@ export async function initEngine() {
 
   function canUpgradeAnySkill(meta) {
     try {
-      for (const node of SKILL_NODES) {
+      const frag = document.createDocumentFragment();
+    for (const node of SKILL_NODES) {
         const chk = canUpgradeSkill(meta, node);
         if (chk && chk.ok) return true;
       }
@@ -298,6 +298,7 @@ export async function initEngine() {
     try { localStorage.setItem(key, val ? "1" : "0"); } catch {}
   }
   const initialVfxEnabled = loadBoolLS(LS_KEY_VFX, true);
+  let canvasResizeDirty = true;
 
   function resizeCanvasToDisplay() {
     const rect = canvas.getBoundingClientRect();
@@ -330,12 +331,13 @@ export async function initEngine() {
     canvas.style.width = `${Math.floor(w)}px`;
     canvas.style.height = `${Math.floor(h)}px`;
     resizeCanvasToDisplay();
+    canvasResizeDirty = false;
   }
 
-  const ro = new ResizeObserver(() => fitCanvasCSS());
+  const ro = new ResizeObserver(() => { canvasResizeDirty = true; });
   ro.observe(stageArea);
-  window.addEventListener("resize", () => fitCanvasCSS());
-  requestAnimationFrame(() => fitCanvasCSS());
+  window.addEventListener("resize", () => { canvasResizeDirty = true; });
+  requestAnimationFrame(() => { canvasResizeDirty = true; });
 
   // ---------------- state ----------------
 
@@ -1101,8 +1103,7 @@ export async function initEngine() {
     const chk = canUpgradeSkill(meta, node);
     let hint = "";
     if (!chk.ok) {
-      if (chk.reason==="TIER_LOCK") hint=`이전 티어(T${node.tier-1}) 1레벨 필요`;
-      else if (chk.reason==="PARENT_LOCK") hint="이전 스킬 1레벨 필요";
+      if (chk.reason==="PARENT_LOCK") hint="연결된 활성 노드가 필요";
       else if (chk.reason==="NO_XP") hint=`XP 부족 (${cost})`;
       else if (chk.reason==="MAX") hint="MAX";
     }
@@ -1111,6 +1112,7 @@ export async function initEngine() {
     skillInline.innerHTML = `
       <div class="title">${safeText(node.name)}</div>
       <div class="sub">Lv ${cur}/${SKILL_MAX_LEVEL} → ${next}/${SKILL_MAX_LEVEL}</div>
+      <div class="sub">${safeText(node.group||"PASSIVE")} · Ring ${node.ring ?? 0}</div>
       <div class="sub">현재 ${safeText(curFx)} · 다음 ${safeText(nextFx)}</div>
       ${hint ? `<div class="hint">${safeText(hint)}</div>` : `<div class="hint">Cost: <b>${cost}</b> XP</div>`}
       <div class="row"><button class="up" id="skill-inline-up" ${chk.ok?"":"disabled"}>+1 업그레이드</button><button class="x" id="skill-inline-x">✕</button></div>`;
@@ -1133,8 +1135,6 @@ export async function initEngine() {
     skillOverlay.classList.add("hidden"); hideSkillInline();
     state.uiPause = isSpecialOpen();
   }
-
-  function branchNameByCol(col) { return SKILL_BRANCHES.find((x) => x.col === col)?.name ?? ""; }
 
   function fmtPct(v, digits=1) { return (v*100).toFixed(digits); }
 
@@ -1167,28 +1167,24 @@ export async function initEngine() {
   function renderSkillTree() {
     if (!skillTree) return;
     syncMetaUI();
-    const map = new Map();
-    for (const n of SKILL_NODES) map.set(`${n.tier}_${n.col}`, n);
+    const cx = 360;
+    const cy = 330;
     const frags = [];
-    for (let tier = 1; tier <= 12; tier++) {
-      for (let col = 0; col < 3; col++) {
-        const node = map.get(`${tier}_${col}`);
-        if (!node) { frags.push(`<div></div>`); continue; }
-        const cur = getSkillLevel(meta, node.id);
-        const maxed = cur >= SKILL_MAX_LEVEL;
-        const chk = canUpgradeSkill(meta, node);
-        const locked = (!maxed && !chk.ok && (chk.reason==="TIER_LOCK"||chk.reason==="PARENT_LOCK"));
-        const cost = maxed ? 0 : skillUpgradeCost(node, cur);
-        const cls = ["skill-node", locked?"locked":"", maxed?"maxed":""].filter(Boolean).join(" ");
-        const bname = branchNameByCol(node.col);
-        const sel = (selectedSkillId===node.id) ? "style=\"outline:2px solid rgba(116,192,252,0.55);\"" : "";
-        const costLine = maxed?"MAX":(locked?"LOCK":`Cost ${cost} XP`);
-        frags.push(`<button class="${cls}" data-skill="${node.id}" ${sel}><div class="k">T${node.tier} · ${safeText(bname)}</div><div class="n">${safeText(node.name)}</div><div class="l">Lv ${cur}/${SKILL_MAX_LEVEL} · ${safeText(fmtEffect(node,cur))}</div><div class="c">${safeText(costLine)}</div></button>`);
-      }
+    for (const node of SKILL_NODES) {
+      const cur = getSkillLevel(meta, node.id);
+      const maxed = cur >= SKILL_MAX_LEVEL;
+      const chk = canUpgradeSkill(meta, node);
+      const locked = (!maxed && !chk.ok && chk.reason === "PARENT_LOCK");
+      const cost = maxed ? 0 : skillUpgradeCost(node, cur);
+      const active = cur >= 1 || !!node.start;
+      const cls = ["skill-node", locked ? "locked" : "", maxed ? "maxed" : "", active ? "active" : "", node.notable ? "notable" : "", node.keystone ? "keystone" : ""].filter(Boolean).join(" ");
+      const sel = selectedSkillId === node.id ? 'outline:2px solid rgba(116,192,252,0.6);' : '';
+      const costLine = maxed ? "MAX" : (locked ? "LOCK" : `Cost ${cost} XP`);
+      frags.push(`<button class="${cls}" data-skill="${node.id}" style="left:${cx + node.x}px;top:${cy + node.y}px;${sel}"><div class="k">${safeText(node.group || "CORE")} · R${node.ring ?? 0}</div><div class="n">${safeText(node.name)}</div><div class="l">Lv ${cur}/${SKILL_MAX_LEVEL}</div><div class="c">${safeText(costLine)}</div></button>`);
     }
     skillTree.innerHTML = frags.join("\n");
     skillTree.querySelectorAll("[data-skill]").forEach((el) => {
-      el.addEventListener("click", () => { selectedSkillId=el.getAttribute("data-skill"); renderSkillTree(); renderSkillDetail(selectedSkillId); });
+      el.addEventListener("click", () => { selectedSkillId = el.getAttribute("data-skill"); renderSkillTree(); renderSkillDetail(selectedSkillId); });
     });
     renderSkillInline(selectedSkillId);
     requestAnimationFrame(() => { drawSkillLines(); positionSkillInline(selectedSkillId); });
@@ -1204,14 +1200,13 @@ export async function initEngine() {
     const chk = canUpgradeSkill(meta, node);
     let lockText = "";
     if (!chk.ok) {
-      if (chk.reason==="TIER_LOCK") lockText=`잠김: T${node.tier-1}에서 1레벨 필요`;
-      else if (chk.reason==="PARENT_LOCK") lockText="잠김: 이전 스킬 1레벨 필요";
+      if (chk.reason==="PARENT_LOCK") lockText="잠김: 연결된 활성 노드 필요";
       else if (chk.reason==="NO_XP") lockText=`XP 부족: ${cost} 필요`;
       else if (chk.reason==="MAX") lockText="MAX 레벨";
     }
     skillDetail.innerHTML = `
       <div class="big">${safeText(node.name)}</div>
-      <div class="small" style="margin-bottom:8px;">T${node.tier} · ${safeText(branchNameByCol(node.col))} · Lv ${cur}/${SKILL_MAX_LEVEL}</div>
+      <div class="small" style="margin-bottom:8px;">${safeText(node.group||"PASSIVE")} · Ring ${node.ring ?? 0} · Lv ${cur}/${SKILL_MAX_LEVEL}</div>
       <div class="desc">${safeText(node.desc)}\n\n현재: ${safeText(fmtEffect(node,cur))}\n다음: ${safeText(cur>=SKILL_MAX_LEVEL?"-":fmtEffect(node,next))}\n\n※ 효과는 다음 런부터.</div>
       <div class="meta" style="margin-top:10px;">보유 XP: <b>${meta.xp??0}</b> · 비용: <b>${cost}</b></div>
       ${lockText?`<div class="small" style="margin-top:8px;color:rgba(255,107,107,0.92);">${safeText(lockText)}</div>`:""}
@@ -1224,32 +1219,36 @@ export async function initEngine() {
 
   function drawSkillLines() {
     if (!skillLines || !skillTreeWrap || !skillTree) return;
-    while (skillLines.firstChild) skillLines.removeChild(skillLines.firstChild);
+    skillLines.innerHTML = "";
     const wrapRect = skillTreeWrap.getBoundingClientRect();
     skillLines.setAttribute("width", String(wrapRect.width));
     skillLines.setAttribute("height", String(wrapRect.height));
     skillLines.setAttribute("viewBox", `0 0 ${wrapRect.width} ${wrapRect.height}`);
     const getCenter = (el) => {
       const r = el.getBoundingClientRect();
-      return { x: (r.left+r.right)/2-wrapRect.left, y: (r.top+r.bottom)/2-wrapRect.top };
+      return { x: (r.left + r.right) / 2 - wrapRect.left, y: (r.top + r.bottom) / 2 - wrapRect.top };
     };
+    const frag = document.createDocumentFragment();
     for (const node of SKILL_NODES) {
       const el = skillTree.querySelector(`[data-skill="${node.id}"]`);
       if (!el) continue;
-      for (const pid of (node.parents||[])) {
+      for (const pid of (node.parents || [])) {
         const pel = skillTree.querySelector(`[data-skill="${pid}"]`);
         if (!pel) continue;
-        const a = getCenter(pel), b = getCenter(el);
+        const a = getCenter(pel);
+        const b = getCenter(el);
         const parentLv = getSkillLevel(meta, pid);
-        const line = document.createElementNS("http://www.w3.org/2000/svg","line");
-        line.setAttribute("x1",String(a.x)); line.setAttribute("y1",String(a.y));
-        line.setAttribute("x2",String(b.x)); line.setAttribute("y2",String(b.y));
-        line.setAttribute("stroke",`rgba(255,255,255,${parentLv>=1?0.38:0.14})`);
-        line.setAttribute("stroke-width","2"); line.setAttribute("stroke-linecap","round");
-        skillLines.appendChild(line);
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", String(a.x)); line.setAttribute("y1", String(a.y));
+        line.setAttribute("x2", String(b.x)); line.setAttribute("y2", String(b.y));
+        line.setAttribute("stroke", `rgba(255,255,255,${parentLv >= 1 ? 0.38 : 0.14})`);
+        line.setAttribute("stroke-width", "2"); line.setAttribute("stroke-linecap", "round");
+        frag.appendChild(line);
       }
     }
+    skillLines.appendChild(frag);
   }
+
 
   // ---------------- SPECIAL pick ----------------
 
@@ -3529,7 +3528,7 @@ export async function initEngine() {
   }
 
   function render() {
-    resizeCanvasToDisplay(); setLogicalTransform();
+    setLogicalTransform();
     ctx.clearRect(0,0,logical.w,logical.h);
     drawBackground(); drawGrid(); drawPath(); drawCore(); drawUnits(); drawEnemies(); drawEffects(); drawHUD();
   }
@@ -3763,6 +3762,7 @@ ${buildKeyboardShortcutHelpHTML()}
   let last=performance.now();
 
   function frame(now) {
+    if (canvasResizeDirty) fitCanvasCSS();
     const rawDt=Math.min(0.12,(now-last)/1000);
     last=now;
     let dt=rawDt*state.timeScale;
