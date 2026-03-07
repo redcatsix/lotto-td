@@ -847,9 +847,13 @@ export async function initEngine() {
       for (let i = 0; i < maxLen; i++) {
         const cur = unit.options[i]; const nxt = pm.previewOpts[i];
         const isPinned = pins.includes(i);
-        const curHtml = cur ? `<span style="color:${rarityColor(cur.rarity)};opacity:0.55;text-decoration:line-through;">${safeText(formatOption(cur))}</span>` : "";
-        const nxtHtml = nxt ? `<span style="color:${rarityColor(nxt.rarity)};font-weight:${rarityRank(nxt.rarity)>=3?800:600};">${isPinned?"📌 ":""}${safeText(formatOption(nxt))}</span>` : "";
-        previewHtml += `<div class="mod-opt-row">${curHtml}<span class="mod-arrow">→</span>${nxtHtml}</div>`;
+        const oldPart = cur
+          ? `<div class="mod-opt-old">${safeText(formatOption(cur))}</div>`
+          : `<div class="mod-opt-old" style="opacity:0.2;">—</div>`;
+        const newPart = nxt
+          ? `<div class="mod-opt-new"><span class="mod-arrow">→</span><span style="color:${rarityColor(nxt.rarity)};font-weight:${rarityRank(nxt.rarity)>=3?800:600};">${isPinned?"📌 ":""}${safeText(formatOption(nxt))}</span></div>`
+          : "";
+        previewHtml += `<div class="mod-opt-row${isPinned?" mod-pinned":""}">${oldPart}${newPart}</div>`;
       }
       previewHtml += `<div class="mod-preview-actions"><button id="mod-accept-btn">✓ 수락</button><button id="mod-cancel-btn">✗ 취소</button></div>`;
       ttOptions.innerHTML = previewHtml;
