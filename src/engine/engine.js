@@ -823,6 +823,10 @@ export async function initEngine() {
       if (unit.executeBonus > 0) lines.push(`처형: +${Math.round(unit.executeBonus*100)}%`);
       if (unit.pressureDmg > 0) lines.push(`압박: 최대 +${Math.round(unit.pressureDmg*100)}%`);
       if (unit.maxHpPctDmg > 0) lines.push(`최대체력 비례: +${fmtPct01(unit.maxHpPctDmg)}`);
+      if (unit.igniteChance > 0) lines.push(`🔥 점화: ${Math.round(unit.igniteChance*100)}% / 틱 ${Math.round(unit.igniteDmgRatio*100)}%`);
+      if (unit.curseDmgMul > 0) lines.push(`💀 저주: ${Math.round(unit.curseChance*100)}% / +${Math.round(unit.curseDmgMul*100)}% 증폭`);
+      if (unit.doubleStrikeChance > 0) lines.push(`⚡ 연격: ${Math.round(unit.doubleStrikeChance*100)}%`);
+      if (unit.pierce > 0) lines.push(`🎯 관통: +${unit.pierce}`);
       if (unit.magSize > 0) lines.push(`탄창: ${unit.magAmmo}/${unit.magSize} / 재장전 ${unit.reloadTime.toFixed(1)}s`);
       if (unit.overheatMax > 0) lines.push(`과열: ${unit.overheatShots}/${unit.overheatMax} / 냉각 ${unit.overheatCool.toFixed(1)}s`);
       if (unit.auraOn) lines.push(`오라 버프 ON: 사거리 x${unit.auraRangeMul.toFixed(2)} / 치명 x${unit.auraCritChanceMul.toFixed(2)}`);
@@ -2226,6 +2230,8 @@ export async function initEngine() {
     }
     if (u.pressureDmg>0) { const pp2=pressureProgress(en); if(pp2>0) dmg*=1+u.pressureDmg*pp2; }
     if (u.maxHpPctDmg>0) dmg += en.maxHp*u.maxHpPctDmg;
+    // 저주: 받는 피해 증폭
+    if (en.curseMul>1.0) dmg *= en.curseMul;
     let isCrit = false;
     const cc = clamp((u.critChance+(extra.critAdd??0))*(extra.critChanceMul??1),0,0.95);
     if (cc>0 && Math.random()<cc) { isCrit=true; dmg*=u.critMult; }
@@ -2384,6 +2390,42 @@ export async function initEngine() {
       if (en.ricochetPopupCd<=0) { addFloater(hitX,hitY-18,"도탄!","rgba(210,210,210,0.92)",false); en.ricochetPopupCd=0.35; }
     }
     if (u.slowDuration>0) applySlow(en,u.slowFactor,u.slowDuration);
+    // 점화 (IGNITE): 화염 지속피해 적용
+    if (u.igniteChance>0 && Math.random()<u.igniteChance) {
+      const dpt = Math.max(1, Math.round(u.damage * u.igniteDmgRatio));
+      const dur = 3.0;
+      if (!en.ignite || en.ignite.dmgPerTick < dpt) {
+        en.ignite = { dmgPerTick: dpt, t: dur, tick: 0 };
+      }
+    }
+    // 저주 (CURSE): 피해 증폭 디버프 부여
+    if (u.curseChance>0 && Math.random()<u.curseChance) {
+      const mul = 1 + u.curseDmgMul;
+      if (mul > (en.curseMul ?? 1.0)) { en.curseMul = mul; en.curseT = 5.0 + u.curseDmgMul * 4; }
+    }
+  }
+
+  // 관통 (PIERCE): 같은 방향 ±30° 적 추가 타격
+  function applyPierce(attackerKey, u, mainEn, baseDmg, hitX, hitY) {
+    if (!u.pierce || u.pierce <= 0) return;
+    const angle = Math.atan2(mainEn.y - u.y, mainEn.x - u.x);
+    const tol = Math.PI / 6; // 30°
+    const rangeR2 = (u.range * 1.5) ** 2;
+    let count = 0;
+    for (const en of state.enemies) {
+      if (count >= u.pierce) break;
+      if (en.id === mainEn.id || en.hp <= 0) continue;
+      const d2 = (en.x - u.x) ** 2 + (en.y - u.y) ** 2;
+      if (d2 > rangeR2) continue;
+      const a2 = Math.atan2(en.y - u.y, en.x - u.x);
+      let diff = Math.abs(angle - a2);
+      if (diff > Math.PI) diff = 2 * Math.PI - diff;
+      if (diff < tol) {
+        const hit = calcDamage(u, en);
+        dealDamage(attackerKey, u, en, hit.dmg, hit.isCrit, en.x, en.y, { ricochet: false });
+        count++;
+      }
+    }
   }
 
   function applySplash(attackerKey, u, centerX, centerY, mainTargetId, mainRawDmg) {
@@ -2509,6 +2551,13 @@ export async function initEngine() {
         dealDamage(key,u,en,hit.dmg,hit.isCrit,en.x,en.y,{ricochet:hit.ricochet});
         if (u.blastRadiusCells>0&&u.splashMul>0) applySplash(key,u,en.x,en.y,en.id,hit.rawDmg);
         if (u.ricochet>0) applyRicochet(key,u,en,hit.rawDmg,en.x,en.y);
+        // 연격 (DOUBLE_STRIKE): 75% 위력 추가 공격
+        if (u.doubleStrikeChance>0 && Math.random()<u.doubleStrikeChance && en.hp>0) {
+          const hit2=calcDamage(u,en,{dmgMul:0.75,critAdd:0,critChanceMul:1});
+          dealDamage(key,u,en,hit2.dmg,hit2.isCrit,en.x+6,en.y-6,{ricochet:false});
+        }
+        // 관통 (PIERCE): 같은 방향 추가 타격
+        if (u.pierce>0) applyPierce(key,u,en,hit.dmg,en.x,en.y);
       }
       if (u.magSize>0) { u.magAmmo=Math.max(0,(u.magAmmo||0)-1); if(u.magAmmo<=0){u.magAmmo=0;u.reloadT=u.reloadTime;} }
       if (u.overheatMax>0) { u.overheatShots=(u.overheatShots||0)+1; if(u.overheatShots>=u.overheatMax){u.overheatShots=0;u.overheatT=u.overheatCool;} }
@@ -2525,6 +2574,20 @@ export async function initEngine() {
       for (const s of en.slows) s.t-=dt;
       en.slows=en.slows.filter((s)=>s.t>0);
       if (en.ricochetPopupCd!=null) en.ricochetPopupCd=Math.max(0,en.ricochetPopupCd-dt);
+      // 점화 DoT 처리
+      if (en.ignite && en.ignite.t>0) {
+        en.ignite.t-=dt;
+        en.ignite.tick=(en.ignite.tick??0)-dt;
+        if (en.ignite.tick<=0) {
+          const bd=en.ignite.dmgPerTick;
+          en.hp-=bd;
+          addFloater(en.x,en.y-10,`${bd}`,"rgba(255,120,20,0.90)",false);
+          en.ignite.tick=0.5;
+        }
+        if (en.ignite.t<=0) en.ignite=null;
+      }
+      // 저주 시간 감소
+      if (en.curseT>0) { en.curseT-=dt; if(en.curseT<=0){en.curseMul=1.0;en.curseT=0;} }
       let slowMul=1.0;
       if (en.slows.length>0) { slowMul=1.0; for (const s of en.slows) slowMul=Math.min(slowMul,s.factor); }
       const spd=en.speed*slowMul;
