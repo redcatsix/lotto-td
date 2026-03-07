@@ -26,20 +26,17 @@ import {
 import {
   PASSIVE_NODES,
   PASSIVE_NODE_MAP,
-  NODE_TYPE,
-  NODE_COST,
-  REGION_COLOR,
-  TREE_W as POE_W,
-  TREE_H as POE_H,
+  TREE_KEYS, TREE_NAMES, TREE_ICONS, TREE_COLORS,
+  NODE_RARITY, RARITY_COLOR,
+  NODE_POSITIONS, TREE_BOUNDS,
   loadMetaState,
   saveMetaState,
   computeSkillMods,
-  isAllocated,
-  canAllocate,
-  allocateNode,
-  canDeallocate,
-  deallocateNode,
+  getLevel, isUnlocked,
+  canLevelUp, levelUpNode,
+  canLevelDown, levelDownNode,
   canAllocateAny,
+  levelCost, getTreeNodes,
 } from "../systems/skills.js";
 
 import { clamp, lerp, dist2, distToRectPerimeter, rollItemRarityBestOf, rollOptionsBestOf } from "./combat.js";
@@ -1118,15 +1115,16 @@ export async function initEngine() {
     }
   }
 
-  // ---------------- Skill tree (POE canvas – pan/zoom/drag) ----------------
+  // ---------------- Skill tree (4 trees, level 1-20, rarity) ----------------
 
-  let poeCanvas   = null;
-  let poeCtx      = null;
+  let poeCanvas    = null;
+  let poeCtx       = null;
   let poeHoverNode = null;
-  let poeSelNode   = null;   // currently selected node (info panel)
+  let poeSelNode   = null;
+  let poeActiveTree = "ATK";
 
-  // Pan / zoom state (world = 1800×1800)
-  let poeScale  = 0.46;
+  // Pan / zoom state
+  let poeScale  = 1.0;
   let poeOffX   = 0;
   let poeOffY   = 0;
   let poeDrag   = false;
@@ -1136,17 +1134,17 @@ export async function initEngine() {
   let poeDragOY = 0;
   let poeDragMoved = false;
 
-  // Radius in world coords
-  function poeNodeRadius(type) {
-    switch (type) {
-      case NODE_TYPE.START:    return 28;
-      case NODE_TYPE.KEYSTONE: return 22;
-      case NODE_TYPE.NOTABLE:  return 15;
-      default:                 return 9;
+  // Node visual radius by rarity
+  function poeNodeRadius(rarity) {
+    switch (rarity) {
+      case "legendary": return 20;
+      case "epic":      return 17;
+      case "rare":      return 14;
+      case "uncommon":  return 11;
+      default:          return 9;
     }
   }
 
-  // Client-relative coords (inside canvas element) → world coords
   function screenToWorld(ex, ey) {
     return { x: (ex - poeOffX) / poeScale, y: (ey - poeOffY) / poeScale };
   }
@@ -1155,9 +1153,11 @@ export async function initEngine() {
     if (!poeCanvas) return null;
     const { x: wx, y: wy } = screenToWorld(ex, ey);
     let best = null, bestD2 = Infinity;
-    for (const nd of PASSIVE_NODES) {
-      const r  = poeNodeRadius(nd.type) + 10;
-      const d2 = (wx - nd.x) ** 2 + (wy - nd.y) ** 2;
+    for (const nd of getTreeNodes(poeActiveTree)) {
+      const pos = NODE_POSITIONS.get(nd.id);
+      if (!pos) continue;
+      const r  = poeNodeRadius(nd.rarity) + 10;
+      const d2 = (wx - pos.x) ** 2 + (wy - pos.y) ** 2;
       if (d2 < r * r && d2 < bestD2) { bestD2 = d2; best = nd; }
     }
     return best;
@@ -1171,168 +1171,125 @@ export async function initEngine() {
     const H   = poeCanvas.height;
 
     c.clearRect(0, 0, W, H);
-
-    // background
-    c.fillStyle = "rgba(8,12,24,1)";
+    c.fillStyle = "#060a14";
     c.fillRect(0, 0, W, H);
 
-    // Apply world→screen transform (account for DPR)
     c.save();
     c.scale(dpr, dpr);
     c.translate(poeOffX, poeOffY);
     c.scale(poeScale, poeScale);
 
-    const allocSet = new Set(meta.allocated ?? []);
-    allocSet.add("start");
+    const treeCol = TREE_COLORS[poeActiveTree] ?? "#fff";
+    const nodes   = getTreeNodes(poeActiveTree);
 
-    // ── Draw connections ────────────────────────────────────────────────
-    const drawn = new Set();
-    for (const nd of PASSIVE_NODES) {
-      for (const cid of (nd.connections || [])) {
-        const edgeKey = [nd.id, cid].sort().join("|");
-        if (drawn.has(edgeKey)) continue;
-        drawn.add(edgeKey);
-        const cn = PASSIVE_NODE_MAP.get(cid);
-        if (!cn) continue;
-        const bothAlloc = allocSet.has(nd.id) && allocSet.has(cid);
-        const col = bothAlloc
-          ? (REGION_COLOR[nd.region] ?? "#fff") + "99"
-          : "rgba(255,255,255,0.09)";
-        c.beginPath();
-        c.moveTo(nd.x, nd.y);
-        c.lineTo(cn.x, cn.y);
-        c.strokeStyle = col;
-        c.lineWidth   = bothAlloc ? 2.5 : 1.2;
-        c.stroke();
-      }
+    // ── Connections (parent → child) ───────────────────────────────────
+    for (const nd of nodes) {
+      if (!nd.parent) continue;
+      const pPos = NODE_POSITIONS.get(nd.parent);
+      const cPos = NODE_POSITIONS.get(nd.id);
+      if (!pPos || !cPos) continue;
+      const parentLv = getLevel(meta, nd.parent);
+      const childLv  = getLevel(meta, nd.id);
+      const lit = parentLv > 0 && childLv > 0;
+      const avail = parentLv > 0 && childLv === 0;
+      c.beginPath();
+      c.moveTo(pPos.x, pPos.y);
+      c.lineTo(cPos.x, cPos.y);
+      c.strokeStyle = lit   ? treeCol + "80"
+                    : avail ? treeCol + "30"
+                    : "rgba(255,255,255,0.08)";
+      c.lineWidth = lit ? 2 : 1;
+      c.stroke();
     }
 
-    // ── Draw nodes ───────────────────────────────────────────────────────
-    for (const nd of PASSIVE_NODES) {
-      const r     = poeNodeRadius(nd.type);
-      const alloc = allocSet.has(nd.id);
+    // ── Nodes ──────────────────────────────────────────────────────────
+    for (const nd of nodes) {
+      const pos  = NODE_POSITIONS.get(nd.id);
+      if (!pos) continue;
+      const { x, y } = pos;
+      const lv    = getLevel(meta, nd.id);
+      const r     = poeNodeRadius(nd.rarity);
+      const col   = RARITY_COLOR[nd.rarity] ?? "#fff";
+      const chk   = canLevelUp(meta, nd.id);
+      const avail = chk.ok;
       const hover = poeHoverNode?.id === nd.id;
       const sel   = poeSelNode?.id === nd.id;
-      const avail = !alloc && canAllocate(meta, nd.id).ok;
-      const col   = REGION_COLOR[nd.region] ?? "#fff";
+      const isRoot= !nd.parent;
 
-      // outer glow
-      if (alloc || hover || sel) {
-        const glowR = r + (sel ? 9 : hover ? 7 : 5);
-        const gr    = c.createRadialGradient(nd.x, nd.y, r * 0.5, nd.x, nd.y, glowR);
-        gr.addColorStop(0, col + (sel ? "55" : alloc ? "33" : "22"));
-        gr.addColorStop(1, col + "00");
+      // glow
+      if (lv > 0 || hover || sel) {
+        const gr = c.createRadialGradient(x, y, r * 0.4, x, y, r + 12);
+        gr.addColorStop(0, col + (sel ? "66" : lv > 0 ? "44" : "22"));
+        gr.addColorStop(1, "transparent");
         c.beginPath();
-        c.arc(nd.x, nd.y, glowR, 0, Math.PI * 2);
+        c.arc(x, y, r + 12, 0, Math.PI * 2);
         c.fillStyle = gr;
         c.fill();
       }
 
-      // Keystone: diamond shape
-      if (nd.type === NODE_TYPE.KEYSTONE) {
+      // Legendary: diamond  |  others: circle
+      if (nd.rarity === "legendary") {
         c.save();
-        c.translate(nd.x, nd.y);
+        c.translate(x, y);
         c.rotate(Math.PI / 4);
-        const s = r * 1.35;
+        const s = r * 1.3;
         c.beginPath();
         c.rect(-s, -s, s * 2, s * 2);
-        c.fillStyle = alloc ? col + "dd"
-                    : avail ? col + "33"
-                    : "rgba(16,22,40,0.95)";
+        c.fillStyle = lv > 0 ? col + "cc" : avail ? col + "22" : "rgba(12,18,34,0.96)";
         c.fill();
-        c.strokeStyle = alloc ? col
-                       : avail ? col + "cc"
-                       : "rgba(255,255,255,0.25)";
+        c.strokeStyle = lv > 0 ? col : avail ? col + "aa" : "rgba(255,255,255,0.22)";
         c.lineWidth = sel ? 3 : 2;
         c.stroke();
-        // inner diamond
-        const si = s * 0.52;
-        c.beginPath();
-        c.rect(-si, -si, si * 2, si * 2);
-        c.strokeStyle = alloc ? "rgba(0,0,0,0.5)" : col + "22";
-        c.lineWidth = 1;
-        c.stroke();
         c.restore();
-
-        // glyph
-        if (nd.glyph) {
-          c.save();
-          c.font = `bold ${r * 1.2}px sans-serif`;
-          c.textAlign    = "center";
-          c.textBaseline = "middle";
-          c.fillStyle = alloc ? "rgba(0,0,0,0.85)"
-                       : avail ? col + "ee"
-                       : "rgba(255,255,255,0.28)";
-          c.fillText(nd.glyph, nd.x, nd.y);
-          c.restore();
-        }
-
-      } else if (nd.type === NODE_TYPE.NOTABLE) {
-        // Notable: hexagon
-        c.save();
-        c.beginPath();
-        for (let k = 0; k < 6; k++) {
-          const a = (k * Math.PI) / 3 - Math.PI / 6;
-          const px = nd.x + r * 1.15 * Math.cos(a);
-          const py = nd.y + r * 1.15 * Math.sin(a);
-          k === 0 ? c.moveTo(px, py) : c.lineTo(px, py);
-        }
-        c.closePath();
-        c.fillStyle   = alloc ? col + "dd" : avail ? col + "33" : "rgba(16,22,40,0.95)";
-        c.fill();
-        c.strokeStyle = alloc ? col : avail ? col + "bb" : "rgba(255,255,255,0.22)";
-        c.lineWidth   = sel ? 2.5 : 1.8;
-        c.stroke();
-        c.restore();
-
-        if (nd.glyph) {
-          c.save();
-          c.font = `${r * 1.0}px sans-serif`;
-          c.textAlign    = "center";
-          c.textBaseline = "middle";
-          c.fillStyle = alloc ? "rgba(0,0,0,0.80)"
-                       : avail ? col + "dd"
-                       : "rgba(255,255,255,0.25)";
-          c.fillText(nd.glyph, nd.x, nd.y);
-          c.restore();
-        }
-
       } else {
-        // Regular / Start: circle
         c.beginPath();
-        c.arc(nd.x, nd.y, r, 0, Math.PI * 2);
-        c.fillStyle = alloc ? col + "dd"
-                    : avail ? col + "2a"
-                    : nd.type === NODE_TYPE.START ? "rgba(255,255,255,0.15)"
-                    : "rgba(14,20,38,0.95)";
+        c.arc(x, y, r, 0, Math.PI * 2);
+        c.fillStyle = lv > 0 ? col + "cc" : avail ? col + "25" : "rgba(10,16,30,0.95)";
         c.fill();
-        c.strokeStyle = alloc ? col
-                       : avail ? col + "aa"
-                       : nd.type === NODE_TYPE.START ? "rgba(255,255,255,0.70)"
-                       : "rgba(255,255,255,0.18)";
-        c.lineWidth = sel ? 2.5 : nd.type === NODE_TYPE.START ? 2.5 : 1.5;
+        // rarity ring
+        c.strokeStyle = lv > 0 ? col : avail ? col + "99" : "rgba(255,255,255,0.18)";
+        c.lineWidth = sel ? 3 : (nd.rarity === "epic" ? 2.5 : 1.8);
         c.stroke();
+      }
 
-        if (nd.glyph) {
-          c.save();
-          c.font = `${nd.type === NODE_TYPE.START ? r * 1.1 : r * 0.90}px sans-serif`;
-          c.textAlign    = "center";
-          c.textBaseline = "middle";
-          c.fillStyle = alloc ? "rgba(0,0,0,0.80)"
-                       : avail ? col + "cc"
-                       : nd.type === NODE_TYPE.START ? "rgba(255,255,255,0.85)"
-                       : "rgba(255,255,255,0.22)";
-          c.fillText(nd.glyph, nd.x, nd.y);
-          c.restore();
-        }
+      // level indicator inside node
+      if (lv > 0) {
+        c.save();
+        const fs = Math.max(7, r * 0.70);
+        c.font = `bold ${fs}px sans-serif`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillStyle = lv >= nd.maxLevel ? "#ffd43b" : "rgba(0,0,0,0.85)";
+        c.fillText(lv, x, y);
+        c.restore();
+      } else {
+        // glyph when not yet purchased
+        c.save();
+        c.font = `${Math.max(8, r * 0.82)}px sans-serif`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillStyle = avail ? col + "cc" : "rgba(255,255,255,0.20)";
+        c.fillText(nd.glyph, x, y);
+        c.restore();
+      }
+
+      // max-level crown glow
+      if (lv >= nd.maxLevel) {
+        c.beginPath();
+        c.arc(x, y, r + 3, 0, Math.PI * 2);
+        c.strokeStyle = "#ffd43b";
+        c.lineWidth = 1.5;
+        c.setLineDash([3, 3]);
+        c.stroke();
+        c.setLineDash([]);
       }
 
       // selected ring
       if (sel) {
         c.beginPath();
-        c.arc(nd.x, nd.y, r + 6, 0, Math.PI * 2);
-        c.strokeStyle = "rgba(255,255,255,0.80)";
-        c.lineWidth   = 2;
+        c.arc(x, y, r + 6, 0, Math.PI * 2);
+        c.strokeStyle = "rgba(255,255,255,0.75)";
+        c.lineWidth = 2;
         c.setLineDash([4, 3]);
         c.stroke();
         c.setLineDash([]);
@@ -1344,61 +1301,76 @@ export async function initEngine() {
 
   // ── Floating node info panel ─────────────────────────────────────────────
   let snpPanel = null;
-
   function getSnpPanel() {
     if (!snpPanel) snpPanel = document.getElementById("skill-node-panel");
     return snpPanel;
+  }
+
+  function formatEffect(eff, lv) {
+    if (!eff) return "";
+    if (eff.kind === "MULTI") return eff.effects.map(e => formatEffect(e, lv)).join(" · ");
+    const pct = ["DMG_PCT","BOSS_DMG_PCT","ELITE_DMG_PCT","PRESSURE_DMG_PCT",
+                 "EXECUTE_DMG_PCT","HOT_ASPD_ADD","HOT_CRIT_ADD","CD_REDUCE_PCT",
+                 "MULTI_HIT_CHANCE","RARITY_UP_ADD","REROLL_REFUND_CHANCE",
+                 "BOSS_EXTRA_LEGEND_CHANCE","MYTHIC_JACKPOT_CHANCE"];
+    const kindLabel = {
+      DMG_PCT:"공격력",BOSS_DMG_PCT:"보스피해",ELITE_DMG_PCT:"엘리트피해",
+      PRESSURE_DMG_PCT:"압박피해",EXECUTE_DMG_PCT:"처형피해",
+      HOT_ASPD_ADD:"HOT공속",HOT_CRIT_ADD:"HOT치명",CD_REDUCE_PCT:"쿨다운감소",
+      MULTI_HIT_CHANCE:"다중공격",CRIT_CHANCE_ADD:"치명확률",CRIT_MULT_ADD:"치명배율",
+      PEN_ADD:"관통",CORE_HP_ADD:"코어HP",START_COMMON_ADD:"일반티켓",
+      START_RARE_ADD:"레어티켓",RARITY_UP_ADD:"등급업",REROLL_REFUND_CHANCE:"환급확률",
+      BOSS_EXTRA_LEGEND_CHANCE:"보스전설",MYTHIC_JACKPOT_CHANCE:"신화잭팟",
+    }[eff.kind] || eff.kind;
+    const val = eff.value * (lv || 1);
+    const fmt = pct.includes(eff.kind) ? `${(val*100).toFixed(2)}%` : `+${val.toFixed(2)}`;
+    return `${kindLabel} ${fmt}`;
   }
 
   function showNodePanel(nd) {
     const panel = getSnpPanel();
     if (!panel) return;
     poeSelNode = nd;
-
     if (!nd) { panel.classList.add("hidden"); drawPoeTree(); return; }
 
-    const allocSet = new Set(meta.allocated ?? []);
-    allocSet.add("start");
-    const alloc    = allocSet.has(nd.id);
-    const chkBuy   = canAllocate(meta, nd.id);
-    const chkRef   = canDeallocate(meta, nd.id);
-    const cost     = NODE_COST[nd.type] ?? 25;
-    const col      = REGION_COLOR[nd.region] ?? "#fff";
-    const typeLbl  = { start:"시작점", keystone:"⬛ 키스톤", notable:"⬡ 주요 노드", regular:"● 일반 노드" }[nd.type] ?? "노드";
+    const lv     = getLevel(meta, nd.id);
+    const chkUp  = canLevelUp(meta, nd.id);
+    const chkDn  = canLevelDown(meta, nd.id);
+    const col    = RARITY_COLOR[nd.rarity] ?? "#fff";
+    const rarLbl = { common:"일반",uncommon:"고급",rare:"희귀",epic:"영웅",legendary:"전설" }[nd.rarity] ?? nd.rarity;
+    const treeCol= TREE_COLORS[nd.tree] ?? "#fff";
+
+    const nextCost = chkUp.ok ? chkUp.cost : (lv < nd.maxLevel ? levelCost(nd.rarity, lv+1) : null);
+    const perLvFmt = formatEffect(nd.eff, 1);
+    const curFmt   = lv > 0 ? formatEffect(nd.eff, lv) : "—";
 
     let statusHtml = "";
-    if (nd.type === NODE_TYPE.START) {
-      statusHtml = `<div class="snp-status" style="color:rgba(255,255,255,0.55);">항상 활성화됨</div>`;
-    } else if (alloc) {
-      const refMsg = chkRef.ok ? `환불 가능 (+${chkRef.cost} XP)` : "환불 불가 (다른 노드가 연결됨)";
-      statusHtml = `<div class="snp-status" style="color:${col};">✓ 활성화됨</div><div class="snp-refund-hint">${refMsg}</div>`;
-    } else if (!chkBuy.ok) {
-      const msg = chkBuy.reason === "NOT_CONNECTED" ? "🔒 연결된 노드를 먼저 활성화하세요"
-                : chkBuy.reason === "NO_XP"         ? `XP 부족 (필요: ${cost} XP)`
-                : "활성화 불가";
+    if (lv >= nd.maxLevel) {
+      statusHtml = `<div class="snp-status" style="color:#ffd43b;">⭐ 최대 레벨!</div>`;
+    } else if (!chkUp.ok) {
+      const msg = chkUp.reason === "PARENT_LOCKED" ? "🔒 상위 노드를 먼저 해금하세요"
+                : chkUp.reason === "NO_XP"         ? `XP 부족 (필요: ${nextCost})`
+                : "강화 불가";
       statusHtml = `<div class="snp-status" style="color:#ff6b6b;">${msg}</div>`;
     } else {
-      statusHtml = `<div class="snp-status" style="color:#a9e34b;">활성화 가능 · ${cost} XP</div>`;
+      statusHtml = `<div class="snp-status" style="color:#a9e34b;">강화 가능 · ${nextCost} XP</div>`;
     }
-
-    const buyDisabled  = alloc || !chkBuy.ok || nd.type === NODE_TYPE.START;
-    const refDisabled  = !chkRef.ok;
 
     panel.innerHTML = `
       <div class="snp-header">
-        <span class="snp-glyph" style="color:${col}">${nd.glyph || "·"}</span>
+        <span class="snp-glyph" style="color:${col}">${nd.glyph}</span>
         <div class="snp-title" style="color:${col}">${safeText(nd.name)}</div>
         <button class="snp-close-btn">✕</button>
       </div>
-      <div class="snp-type">${typeLbl}</div>
-      <div class="snp-desc">${safeText(nd.desc)}</div>
+      <div class="snp-type"><span style="color:${col}">${rarLbl}</span> &nbsp;·&nbsp; <span style="color:${treeCol}">${TREE_NAMES[nd.tree]}</span> &nbsp;·&nbsp; Lv ${lv}/${nd.maxLevel}</div>
+      <div class="snp-desc">레벨당: ${safeText(perLvFmt)}</div>
+      ${lv > 0 ? `<div class="snp-cur">현재 효과: <b>${safeText(curFmt)}</b></div>` : ""}
       ${statusHtml}
-      <div class="snp-xp">보유 XP: <b>${meta.xp ?? 0}</b>${nd.type !== NODE_TYPE.START ? ` &nbsp;·&nbsp; 비용: <b>${cost}</b>` : ""}</div>
+      <div class="snp-xp">보유 XP: <b>${meta.xp ?? 0}</b>${nextCost ? ` &nbsp;·&nbsp; 다음 강화: <b>${nextCost}</b>` : ""}</div>
+      <div class="snp-levelbar">${Array.from({length:nd.maxLevel},(_,i)=>`<span class="snp-pip${i<lv?" lit":""}${lv>0&&i===lv-1?" last":""}"></span>`).join("")}</div>
       <div class="snp-btnrow">
-        ${!alloc && nd.type !== NODE_TYPE.START
-          ? `<button id="snp-buy" ${buyDisabled ? "disabled" : ""}>구매</button>` : ""}
-        ${alloc && nd.type !== NODE_TYPE.START
-          ? `<button id="snp-refund" class="snp-refund" ${refDisabled ? "disabled" : ""}>환불</button>` : ""}
+        ${lv < nd.maxLevel ? `<button id="snp-buy" ${chkUp.ok?"":"disabled"}>강화 +1</button>` : ""}
+        ${lv > 0 ? `<button id="snp-refund" class="snp-refund" ${chkDn.ok?"":"disabled"}>레벨 다운 (+${chkDn.ok?chkDn.refund:levelCost(nd.rarity,lv)} XP)</button>` : ""}
       </div>`;
 
     panel.classList.remove("hidden");
@@ -1408,11 +1380,38 @@ export async function initEngine() {
       poeSelNode = null; panel.classList.add("hidden"); drawPoeTree();
     });
     document.getElementById("snp-buy")?.addEventListener("click", () => {
-      if (allocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); showNodePanel(nd); }
+      if (levelUpNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); showNodePanel(nd); }
     });
     document.getElementById("snp-refund")?.addEventListener("click", () => {
-      if (deallocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); showNodePanel(nd); }
+      if (levelDownNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); showNodePanel(nd); }
     });
+  }
+
+  function centerTreeView() {
+    if (!poeCanvas) return;
+    const rect   = poeCanvas.getBoundingClientRect();
+    const bounds = TREE_BOUNDS.get(poeActiveTree) ?? { w:800, h:600 };
+    poeScale = Math.min(rect.width / bounds.w, rect.height / bounds.h) * 0.90;
+    poeOffX  = (rect.width  - bounds.w * poeScale) / 2;
+    poeOffY  = (rect.height - bounds.h * poeScale) / 2;
+  }
+
+  function switchTree(treeKey) {
+    poeActiveTree = treeKey;
+    poeSelNode    = null;
+    poeHoverNode  = null;
+    const panel = getSnpPanel();
+    if (panel) panel.classList.add("hidden");
+    // update tab buttons
+    document.querySelectorAll(".skill-tab-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tree === treeKey);
+    });
+    const dpr  = window.devicePixelRatio || 1;
+    const rect = poeCanvas.getBoundingClientRect();
+    poeCanvas.width  = Math.round(rect.width  * dpr);
+    poeCanvas.height = Math.round(rect.height * dpr);
+    centerTreeView();
+    drawPoeTree();
   }
 
   function initPassiveTreeUI() {
@@ -1420,15 +1419,17 @@ export async function initEngine() {
     if (!poeCanvas) return;
     poeCtx = poeCanvas.getContext("2d");
 
+    // Tab buttons
+    document.querySelectorAll(".skill-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => switchTree(btn.dataset.tree));
+    });
+
     function resizePoeCanvas() {
       const dpr  = window.devicePixelRatio || 1;
       const rect = poeCanvas.getBoundingClientRect();
       poeCanvas.width  = Math.round(rect.width  * dpr);
       poeCanvas.height = Math.round(rect.height * dpr);
-      // Center world on canvas
-      poeScale = Math.min(rect.width / POE_W, rect.height / POE_H) * 0.88;
-      poeOffX  = (rect.width  - POE_W * poeScale) / 2;
-      poeOffY  = (rect.height - POE_H * poeScale) / 2;
+      centerTreeView();
       drawPoeTree();
     }
 
@@ -1531,12 +1532,14 @@ export async function initEngine() {
         const rect = poeCanvas.getBoundingClientRect();
         poeCanvas.width  = Math.round(rect.width  * dpr);
         poeCanvas.height = Math.round(rect.height * dpr);
-        poeScale = Math.min(rect.width / POE_W, rect.height / POE_H) * 0.88;
-        poeOffX  = (rect.width  - POE_W * poeScale) / 2;
-        poeOffY  = (rect.height - POE_H * poeScale) / 2;
+        centerTreeView();
         drawPoeTree();
       });
     }
+    // sync active tab highlight
+    document.querySelectorAll(".skill-tab-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tree === poeActiveTree);
+    });
   }
 
   function closeSkillTree() {

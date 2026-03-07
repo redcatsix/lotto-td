@@ -322,62 +322,71 @@ hr{border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;}
 
 .badge.xp{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.90);}
 
-.skill-modal{width:min(1060px,calc(100vw - 24px));}
-.skill-modal .modal-header{justify-content:flex-start;}
+.skill-modal{width:min(1100px,calc(100vw - 20px));}
+.skill-modal-hdr{flex-wrap:wrap;gap:8px;padding:10px 14px !important;justify-content:flex-start !important;}
 .skill-modal-body{padding:0 !important;overflow:hidden;}
-.skill-xp{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.90);margin-left:auto;margin-right:10px;}
+.skill-xp{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.90);margin-left:auto;margin-right:6px;white-space:nowrap;}
 
-/* ── Tree wrap: full canvas, no side panel ── */
+/* ── Tree tabs ── */
+.skill-tabs{display:flex;gap:4px;flex-wrap:wrap;}
+.skill-tab-btn{
+  font-size:11px;font-weight:700;padding:5px 11px;border-radius:8px;
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.15s;white-space:nowrap;
+}
+.skill-tab-btn:hover{background:rgba(255,255,255,0.10);color:rgba(255,255,255,0.85);}
+.skill-tab-btn.active[data-tree="ATK"] {background:rgba(255,107,107,0.20);border-color:#ff6b6b;color:#ff6b6b;}
+.skill-tab-btn.active[data-tree="ASPD"]{background:rgba(116,192,252,0.20);border-color:#74c0fc;color:#74c0fc;}
+.skill-tab-btn.active[data-tree="CRIT"]{background:rgba(224,64,251,0.20);border-color:#e040fb;color:#e040fb;}
+.skill-tab-btn.active[data-tree="CHAIN"]{background:rgba(255,212,59,0.20);border-color:#ffd43b;color:#ffd43b;}
+
+/* ── Tree canvas wrap ── */
 .skill-tree-wrap{
-  position:relative;
-  width:100%;
-  height:min(72vh, 660px);
+  position:relative;width:100%;height:min(74vh,680px);
+  background:#060a14;overflow:hidden;cursor:grab;
   border-radius:0 0 16px 16px;
-  background:#080c18;
-  overflow:hidden;
-  cursor:grab;
 }
 .skill-tree-wrap:active{cursor:grabbing;}
 .poe-tree-canvas{display:block;width:100%;height:100%;}
 
 /* ── Floating node info panel ── */
 .skill-node-panel{
-  position:absolute;
-  bottom:16px;
-  right:16px;
-  width:min(290px,calc(100vw - 48px));
-  background:rgba(8,12,26,0.96);
-  border:1px solid rgba(255,255,255,0.18);
-  border-radius:14px;
-  padding:14px 16px 12px;
-  z-index:20;
-  backdrop-filter:blur(12px);
-  box-shadow:0 8px 32px rgba(0,0,0,0.60);
-  animation:snpFadeIn 0.15s ease;
+  position:absolute;bottom:14px;right:14px;
+  width:min(300px,calc(100vw - 44px));
+  background:rgba(6,10,22,0.97);border:1px solid rgba(255,255,255,0.18);
+  border-radius:14px;padding:13px 15px 11px;z-index:20;
+  backdrop-filter:blur(14px);box-shadow:0 8px 36px rgba(0,0,0,0.65);
+  animation:snpFadeIn 0.14s ease;
 }
-@keyframes snpFadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
-
+@keyframes snpFadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
 .skill-node-panel.hidden{display:none;}
 
-.snp-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
-.snp-glyph{font-size:22px;line-height:1;flex-shrink:0;}
-.snp-title{font-size:16px;font-weight:900;letter-spacing:0.1px;flex:1;line-height:1.2;}
-.snp-close-btn{background:none;border:none;color:rgba(255,255,255,0.40);font-size:13px;cursor:pointer;
-  padding:2px 4px;border-radius:4px;transition:color 0.12s,background 0.12s;flex-shrink:0;}
+.snp-header{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.snp-glyph{font-size:20px;line-height:1;flex-shrink:0;}
+.snp-title{font-size:15px;font-weight:900;flex:1;line-height:1.2;}
+.snp-close-btn{background:none;border:none;color:rgba(255,255,255,0.38);font-size:13px;cursor:pointer;
+  padding:2px 4px;border-radius:4px;transition:all 0.12s;flex-shrink:0;}
 .snp-close-btn:hover{color:rgba(255,255,255,0.90);background:rgba(255,255,255,0.10);}
-.snp-type{font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;}
-.snp-desc{font-size:12px;color:rgba(255,255,255,0.80);white-space:pre-line;line-height:1.5;margin-bottom:8px;}
+.snp-type{font-size:10px;color:rgba(255,255,255,0.40);margin-bottom:7px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;}
+.snp-desc{font-size:12px;color:rgba(255,255,255,0.78);line-height:1.45;margin-bottom:5px;}
+.snp-cur{font-size:12px;color:rgba(255,255,255,0.60);margin-bottom:5px;}
 .snp-status{font-size:12px;font-weight:700;margin-bottom:4px;}
-.snp-refund-hint{font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:4px;}
-.snp-xp{font-size:11px;color:rgba(255,255,255,0.50);margin-bottom:10px;}
-.snp-btnrow{display:flex;gap:7px;}
-.snp-btnrow button{flex:1;font-size:12px;font-weight:700;padding:7px 0;border-radius:8px;}
-.snp-refund{background:rgba(255,212,59,0.12) !important;border-color:rgba(255,212,59,0.35) !important;color:#ffd43b !important;}
-.snp-refund:not(:disabled):hover{background:rgba(255,212,59,0.22) !important;}
+.snp-xp{font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:7px;}
+/* level pip bar */
+.snp-levelbar{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:9px;}
+.snp-pip{display:inline-block;width:10px;height:6px;border-radius:2px;background:rgba(255,255,255,0.10);}
+.snp-pip.lit{background:rgba(255,255,255,0.40);}
+.snp-pip.lit.last{background:#ffd43b;}
+.snp-btnrow{display:flex;gap:6px;}
+.snp-btnrow button{flex:1;font-size:11px;font-weight:700;padding:7px 4px;border-radius:8px;}
+.snp-refund{background:rgba(255,212,59,0.10) !important;border-color:rgba(255,212,59,0.32) !important;color:#ffd43b !important;}
+.snp-refund:not(:disabled):hover{background:rgba(255,212,59,0.20) !important;}
 
-@media (max-width:760px){
-  .skill-tree-wrap{height:min(60vh,480px);}
-  .skill-node-panel{width:calc(100% - 32px);left:16px;right:16px;bottom:12px;}
+@media (max-width:700px){
+  .skill-tree-wrap{height:min(58vh,460px);}
+  .skill-node-panel{width:calc(100vw - 28px);left:14px;right:14px;bottom:10px;}
+  .skill-tabs{gap:3px;}
+  .skill-tab-btn{font-size:10px;padding:4px 8px;}
 }
 
 .badge.clickable{cursor:pointer;user-select:none;}
