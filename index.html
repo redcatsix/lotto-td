@@ -201,8 +201,14 @@
   <!-- Skill Tree Modal -->
   <div id="skill-overlay" class="modal-overlay hidden">
     <div class="modal skill-modal">
-      <div class="modal-header">
+      <div class="modal-header skill-modal-hdr">
         <div class="modal-title">SKILL TREE</div>
+        <div class="skill-tabs">
+          <button class="skill-tab-btn active" data-tree="ATK">⚔ 공격력</button>
+          <button class="skill-tab-btn" data-tree="ASPD">≫ 공격속도</button>
+          <button class="skill-tab-btn" data-tree="CRIT">✦ 크리티컬</button>
+          <button class="skill-tab-btn" data-tree="CHAIN">∞ 연쇄</button>
+        </div>
         <div class="skill-xp"><b>XP</b>: <span id="skill-xp">0</span></div>
         <button id="skill-close">닫기</button>
       </div>

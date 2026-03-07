@@ -1,260 +1,298 @@
-// Lotto TD - POE-style Passive Skill Tree (v3)
-// 완전 개편: 방사형 15 키스톤 + 65 노드
+// Lotto TD – Skill Tree v4
+// 4개 트리 (공격력/공격속도/크리티컬/연쇄), 레어리티 등급, 레벨 1-20
 
-export const META_STORAGE_KEY = "lotto_td_meta_v3";
-export const META_VERSION = 3;
+export const META_STORAGE_KEY = "lotto_td_meta_v4";
+export const META_VERSION     = 4;
 
-export const NODE_TYPE = {
-  START:    "start",
-  REGULAR:  "regular",
-  NOTABLE:  "notable",
-  KEYSTONE: "keystone",
+export const TREE_KEYS  = ["ATK", "ASPD", "CRIT", "CHAIN"];
+export const TREE_NAMES = { ATK:"공격력", ASPD:"공격속도", CRIT:"크리티컬", CHAIN:"연쇄" };
+export const TREE_ICONS = { ATK:"⚔",    ASPD:"≫",       CRIT:"✦",       CHAIN:"∞"    };
+export const TREE_COLORS= { ATK:"#ff6b6b", ASPD:"#74c0fc", CRIT:"#e040fb", CHAIN:"#ffd43b" };
+
+export const NODE_RARITY = {
+  COMMON:"common", UNCOMMON:"uncommon", RARE:"rare", EPIC:"epic", LEGENDARY:"legendary",
+};
+export const RARITY_COLOR = {
+  common:"#9e9e9e", uncommon:"#4caf50", rare:"#2979ff", epic:"#d500f9", legendary:"#ffd43b",
+};
+export const RARITY_BASE_COST = {
+  common:8, uncommon:18, rare:40, epic:85, legendary:170,
 };
 
-export const NODE_REGION = {
-  CENTER: "CENTER",
-  ATK:    "ATK",   // 빨강: 공격/속도
-  LUCK:   "LUCK",  // 금색: 행운/도박
-  DEF:    "DEF",   // 파랑: 방어/제어
-  HUNT:   "HUNT",  // 보라: 사냥/관통
-};
-
-export const NODE_COST = {
-  start:    0,
-  regular:  25,
-  notable:  65,
-  keystone: 175,
-};
-
-export const TREE_W = 1800;
-export const TREE_H = 1800;
-
-export const REGION_COLOR = {
-  CENTER: "#ffffff",
-  ATK:    "#ff6b6b",
-  LUCK:   "#ffd43b",
-  DEF:    "#74c0fc",
-  HUNT:   "#cc5de8",
-};
-
-const CX = 900, CY = 900;
-
-function bp(angleDeg, r) {
-  // angle 0 = top, clockwise
-  const rad = angleDeg * Math.PI / 180;
-  return { x: Math.round(CX + r * Math.sin(rad)), y: Math.round(CY - r * Math.cos(rad)) };
+/** XP cost to advance a node from (lv-1) → lv */
+export function levelCost(rarity, lv) {
+  const base = RARITY_BASE_COST[rarity] ?? 8;
+  return Math.round(base * lv * Math.pow(1.15, lv - 1));
 }
 
-function getRegionGlyph(region) {
-  switch (region) {
-    case NODE_REGION.ATK:  return "◈";
-    case NODE_REGION.LUCK: return "◇";
-    case NODE_REGION.DEF:  return "◫";
-    case NODE_REGION.HUNT: return "◆";
-    default: return "·";
-  }
+// ─── Node definitions ────────────────────────────────────────────────────────
+
+function n(id, tree, parent, name, rarity, eff, glyph) {
+  return { id, tree, parent, name, rarity, eff, glyph: glyph||"·", maxLevel:20 };
 }
+function ev(kind, value) { return { kind, value }; }
+function multi(...effects) { return { kind:"MULTI", effects }; }
 
-function buildNodes() {
-  const nodes = [];
-  function add(id, pos, type, name, desc, effect, conns, region, glyph) {
-    nodes.push({ id, x: pos.x, y: pos.y, type, name, desc, effect,
-      connections: conns, region, glyph: glyph || "·" });
-  }
-
-  const N = 15;
-  const R_GATE  = 215;
-  const R_NOT   = 390;
-  const R_PREKS = 515;
-  const R_KS    = 635;
-
-  // ── START ────────────────────────────────────────────────────────────────
-  const allGates = Array.from({ length: N }, (_, i) => `g${i}`);
-  add("start", { x: CX, y: CY }, NODE_TYPE.START,
-    "시작점", "패시브 트리의 중심.\n모든 경로의 시작점입니다.",
-    null, allGates, NODE_REGION.CENTER, "◉");
-
-  // ── BRANCH DEFINITIONS ───────────────────────────────────────────────────
-  // Each branch: angle, key, region, ks, not, preks, gate
-  const branchDefs = [
-    // 0: 0° (top) ─ 공격력
-    { angle:   0, key:"dmg",   region: NODE_REGION.ATK,
-      ks:    { name:"파괴의 망치",     desc:"공격력 +35%\n부작용: HOT 공속 -10%",       effect:{ kind:"KS_HEAVYBLADE", dmg:0.35, aspdPenalty:0.10 }, glyph:"⚔" },
-      not:   { name:"화력 집중",       desc:"공격력 +6% · 보스 피해 +3%",               effect:{ kind:"DMG_BOSS",       dmg:0.06, boss:0.03 },        glyph:"⚔" },
-      preks: { name:"폭발적 화력",     desc:"공격력 +2.5%",                             effect:{ kind:"DMG_PCT",        value:0.025 } },
-      gate:  { name:"화력 기초",       desc:"공격력 +2%",                               effect:{ kind:"DMG_PCT",        value:0.02  } } },
-
-    // 1: 24° ─ 크리티컬
-    { angle:  24, key:"crit",  region: NODE_REGION.ATK,
-      ks:    { name:"크리티컬 폭발",   desc:"치명 배율 +0.50\n부작용: 치명 확률 -12%",  effect:{ kind:"KS_CRIT",        mult:0.50, chancePenalty:0.12 }, glyph:"✦" },
-      not:   { name:"치명 마스터",     desc:"치명 확률 +2% · 배율 +0.10",              effect:{ kind:"CRIT_COMBO",     chance:0.02, mult:0.10 },        glyph:"✦" },
-      preks: { name:"치명 집중",       desc:"치명 배율 +0.06",                          effect:{ kind:"CRIT_MULT_ADD",  value:0.06 } },
-      gate:  { name:"급소 타격",       desc:"치명타 확률 +1%",                          effect:{ kind:"CRIT_CHANCE_ADD",value:0.01 } } },
-
-    // 2: 48° ─ 다중연사
-    { angle:  48, key:"multi", region: NODE_REGION.ATK,
-      ks:    { name:"다중 연사",       desc:"다중공격 확률 +35%\n부작용: 공격력 -15%",   effect:{ kind:"KS_MULTISHOT",   multi:0.35, dmgPenalty:0.15 }, glyph:"⁂" },
-      not:   { name:"연속 사격",       desc:"다중공격 확률 +10% · 공격력 +2%",          effect:{ kind:"MULTI_DMG",      multi:0.10, dmg:0.02 },         glyph:"⁂" },
-      preks: { name:"사격 집중",       desc:"다중공격 확률 +6%",                        effect:{ kind:"MULTI_HIT_CHANCE",value:0.06 } },
-      gate:  { name:"연속 준비",       desc:"다중공격 확률 +4%",                        effect:{ kind:"MULTI_HIT_CHANCE",value:0.04 } } },
-
-    // 3: 72° ─ 공속
-    { angle:  72, key:"aspd",  region: NODE_REGION.ATK,
-      ks:    { name:"공속의 폭풍",     desc:"HOT 공속 +30%\n부작용: 기본 피해 -15%",    effect:{ kind:"KS_ASPD",        aspd:0.30, dmgPenalty:0.15 }, glyph:"≫" },
-      not:   { name:"속공 마스터",     desc:"HOT 공속 +8% · HOT 치명 +3%",             effect:{ kind:"HOT_MASTER",     aspd:0.08, crit:0.03 },        glyph:"≫" },
-      preks: { name:"HOT 과부하",      desc:"HOT 공속 +5%",                             effect:{ kind:"HOT_ASPD_ADD",   value:0.05 } },
-      gate:  { name:"HOT 안정화",      desc:"HOT 공속 +3%",                             effect:{ kind:"HOT_ASPD_ADD",   value:0.03 } } },
-
-    // 4: 96° ─ 광폭화
-    { angle:  96, key:"bsrk",  region: NODE_REGION.ATK,
-      ks:    { name:"광폭화",          desc:"공격력 +20% · HOT 공속 +15%\n부작용: 코어 HP -3", effect:{ kind:"KS_BERSERK", dmg:0.20, aspd:0.15, corePenalty:3 }, glyph:"▲" },
-      not:   { name:"전투 광기",       desc:"공격력 +4% · HOT 공속 +5%",               effect:{ kind:"DMG_ASPD",       dmg:0.04, aspd:0.05 },           glyph:"▲" },
-      preks: { name:"야성 해방",       desc:"공격력 +2% · HOT 공속 +3%",               effect:{ kind:"DMG_ASPD",       dmg:0.02, aspd:0.03 } },
-      gate:  { name:"야성의 힘",       desc:"공격력 +1.5%",                             effect:{ kind:"DMG_PCT",        value:0.015 } } },
-
-    // 5: 120° ─ 인생역전
-    { angle: 120, key:"rev",   region: NODE_REGION.LUCK,
-      ks:    { name:"인생역전",        desc:"등급업 +18%\n부작용: 쿨다운 효율 -8%",     effect:{ kind:"KS_REVERSAL",    rarity:0.18, cdPenalty:0.08 },  glyph:"✧" },
-      not:   { name:"도박사의 감각",   desc:"등급업 +5% · 환급 확률 +3%",              effect:{ kind:"GAMBLER",        rarity:0.05, refund:0.03 },      glyph:"✧" },
-      preks: { name:"고위험 베팅",     desc:"등급업 +3%",                              effect:{ kind:"RARITY_UP_ADD",  value:0.03 } },
-      gate:  { name:"행운 체인",       desc:"등급업 +2%",                              effect:{ kind:"RARITY_UP_ADD",  value:0.02 } } },
-
-    // 6: 144° ─ 백만장자
-    { angle: 144, key:"gold",  region: NODE_REGION.LUCK,
-      ks:    { name:"백만장자",        desc:"레어 티켓 +3\n부작용: 일반 티켓 -5",       effect:{ kind:"KS_MILLIONAIRE", rare:3, commonPenalty:5 },        glyph:"◆" },
-      not:   { name:"황금 손길",       desc:"레어 티켓 +1 · 등급업 +2%",               effect:{ kind:"GOLD_RARE",      rare:1, rarity:0.02 },            glyph:"◆" },
-      preks: { name:"금고 열쇠",       desc:"레어 티켓 +1",                             effect:{ kind:"START_RARE_ADD", value:1 } },
-      gate:  { name:"재투자",          desc:"일반 티켓 +1",                             effect:{ kind:"START_COMMON_ADD",value:1 } } },
-
-    // 7: 168° ─ 연쇄반응
-    { angle: 168, key:"chain", region: NODE_REGION.LUCK,
-      ks:    { name:"연쇄 반응",       desc:"보스 전설 +20% · 신화 잭팟 +10%",          effect:{ kind:"KS_CHAIN",       bossLeg:0.20, mythic:0.10 },    glyph:"∞" },
-      not:   { name:"연금술사",        desc:"보스 전설 +6% · 신화 잭팟 +5%",           effect:{ kind:"CHAIN_MASTER",   bossLeg:0.06, mythic:0.05 },    glyph:"∞" },
-      preks: { name:"황금 계획",       desc:"보스 전설 +4%",                            effect:{ kind:"BOSS_EXTRA_LEGEND_CHANCE", value:0.04 } },
-      gate:  { name:"행운 배가",       desc:"보스 전설 +3%",                            effect:{ kind:"BOSS_EXTRA_LEGEND_CHANCE", value:0.03 } } },
-
-    // 8: 192° ─ 빙결의 군주
-    { angle: 192, key:"frost", region: NODE_REGION.DEF,
-      ks:    { name:"빙결의 군주",     desc:"둔화 +40%\n부작용: 공격력 -12%",           effect:{ kind:"KS_FROST",       slow:0.40, dmgPenalty:0.12 },   glyph:"❄" },
-      not:   { name:"서리 마스터",     desc:"둔화 +10% · 관통 +0.2",                   effect:{ kind:"SLOW_PEN",       slow:0.10, pen:0.2 },            glyph:"❄" },
-      preks: { name:"빙결 강화",       desc:"둔화 +8%",                                 effect:{ kind:"SLOW_POWER",     value:0.08 } },
-      gate:  { name:"냉기 기초",       desc:"둔화 +5%",                                 effect:{ kind:"SLOW_POWER",     value:0.05 } } },
-
-    // 9: 216° ─ 불굴의 요새
-    { angle: 216, key:"fort",  region: NODE_REGION.DEF,
-      ks:    { name:"불굴의 요새",     desc:"코어 HP +15\n부작용: 공격력 -20%",         effect:{ kind:"KS_FORTRESS",    hp:15, dmgPenalty:0.20 },        glyph:"⬡" },
-      not:   { name:"철옹성",          desc:"코어 HP +3 · 코어 피해 -8%",               effect:{ kind:"CORE_FORTRESS",  hp:3,  dmgReduce:0.08 },          glyph:"⬡" },
-      preks: { name:"요새 심화",       desc:"코어 HP +2",                               effect:{ kind:"CORE_HP_ADD",    value:2 } },
-      gate:  { name:"코어 보강",       desc:"코어 HP +1",                               effect:{ kind:"CORE_HP_ADD",    value:1 } } },
-
-    // 10: 240° ─ 찰나의 사수
-    { angle: 240, key:"cd",    region: NODE_REGION.DEF,
-      ks:    { name:"찰나의 사수",     desc:"쿨다운 -25%\n부작용: 공격력 -15%",         effect:{ kind:"KS_FLASH",       cd:0.25, dmgPenalty:0.15 },     glyph:"⟳" },
-      not:   { name:"서보 오버클럭",   desc:"쿨다운 -4% · HOT 공속 +4%",               effect:{ kind:"CDR_HOT",        cd:0.04, aspd:0.04 },            glyph:"⟳" },
-      preks: { name:"극한 냉각",       desc:"쿨다운 -2.5%",                             effect:{ kind:"CD_REDUCE_PCT",  value:0.025 } },
-      gate:  { name:"자동 서보",       desc:"쿨다운 -2%",                               effect:{ kind:"CD_REDUCE_PCT",  value:0.02 } } },
-
-    // 11: 264° ─ 관통의 화살
-    { angle: 264, key:"pen",   region: NODE_REGION.HUNT,
-      ks:    { name:"관통의 화살",     desc:"관통 +1.5\n부작용: 공격력 -12%",           effect:{ kind:"KS_PEN",         pen:1.5, dmgPenalty:0.12 },     glyph:"↣" },
-      not:   { name:"장갑 파쇄",       desc:"관통 +0.5 · 압박 피해 +5%",               effect:{ kind:"PEN_PRESSURE",   pen:0.5, pressure:0.05 },        glyph:"↣" },
-      preks: { name:"관통 심화",       desc:"관통 +0.3",                                effect:{ kind:"PEN_ADD",        value:0.3 } },
-      gate:  { name:"관통 훈련",       desc:"관통 +0.2",                                effect:{ kind:"PEN_ADD",        value:0.2 } } },
-
-    // 12: 288° ─ 처형자의 검
-    { angle: 288, key:"exec",  region: NODE_REGION.HUNT,
-      ks:    { name:"처형자의 검",     desc:"처형 피해 +30%\n부작용: 기본 공격력 -10%", effect:{ kind:"KS_EXECUTE",     execute:0.30, dmgPenalty:0.10 }, glyph:"†" },
-      not:   { name:"냉혹한 사냥꾼",   desc:"처형 피해 +8% · 보스 피해 +3%",           effect:{ kind:"EXEC_BOSS",      execute:0.08, boss:0.03 },      glyph:"†" },
-      preks: { name:"처형 강화",       desc:"처형 피해 +5%",                            effect:{ kind:"EXECUTE_DMG_PCT",value:0.05 } },
-      gate:  { name:"처형 훈련",       desc:"처형 피해 +4%",                            effect:{ kind:"EXECUTE_DMG_PCT",value:0.04 } } },
-
-    // 13: 312° ─ 엘리트 분쇄기
-    { angle: 312, key:"elit",  region: NODE_REGION.HUNT,
-      ks:    { name:"엘리트 분쇄기",   desc:"엘리트 피해 +25%\n부작용: 보스 피해 -8%", effect:{ kind:"KS_ELITE",       elite:0.25, bossPenalty:0.08 },  glyph:"★" },
-      not:   { name:"정밀 사격",       desc:"엘리트 피해 +6% · 보스 피해 +2%",         effect:{ kind:"BOSS_ELITE",     elite:0.06, boss:0.02 },          glyph:"★" },
-      preks: { name:"엘리트 분석",     desc:"엘리트 피해 +4%",                          effect:{ kind:"ELITE_DMG_PCT",  value:0.04 } },
-      gate:  { name:"엘리트 추적",     desc:"엘리트 피해 +2.5%",                        effect:{ kind:"ELITE_DMG_PCT",  value:0.025 } } },
-
-    // 14: 336° ─ 보스 학살자
-    { angle: 336, key:"boss",  region: NODE_REGION.HUNT,
-      ks:    { name:"보스 학살자",     desc:"보스 피해 +25%\n부작용: 엘리트 피해 -8%",  effect:{ kind:"KS_BOSS",        boss:0.25, elitePenalty:0.08 },  glyph:"♔" },
-      not:   { name:"강습 공격",       desc:"보스 피해 +6% · 공격력 +2%",              effect:{ kind:"BOSS_DMG_DMG",   boss:0.06, dmg:0.02 },           glyph:"♔" },
-      preks: { name:"보스 분쇄",       desc:"보스 피해 +4%",                            effect:{ kind:"BOSS_DMG_PCT",   value:0.04 } },
-      gate:  { name:"보스 사냥",       desc:"보스 피해 +2%",                            effect:{ kind:"BOSS_DMG_PCT",   value:0.02 } } },
+// ── ATK Tree (공격력) ─────────────────────────────────────────────────────────
+function buildATK() {
+  const T = "ATK";
+  return [
+    n("atk_r",  T,null,     "공격의 시작",   "common",    ev("DMG_PCT",0.005),                                                           "⚔"),
+    // Branch A – raw damage
+    n("atk_a1", T,"atk_r",  "기초 훈련",     "common",    ev("DMG_PCT",0.007),                                                           "⚔"),
+    n("atk_a2", T,"atk_a1", "화력 강화",     "uncommon",  ev("DMG_PCT",0.010),                                                           "⚔"),
+    n("atk_a3", T,"atk_a2", "집중 화력",     "uncommon",  ev("DMG_PCT",0.013),                                                           "⚔"),
+    n("atk_a4", T,"atk_a3", "화염의 의지",   "rare",      ev("DMG_PCT",0.018),                                                           "🔥"),
+    n("atk_a5", T,"atk_a4", "파괴자의 길",   "epic",      ev("DMG_PCT",0.026),                                                           "💥"),
+    n("atk_a6", T,"atk_a5", "파괴의 망치",   "legendary", ev("DMG_PCT",0.040),                                                           "⚔"),
+    n("atk_a7", T,"atk_a2", "연속 타격",     "uncommon",  multi(ev("DMG_PCT",0.008),ev("BOSS_DMG_PCT",0.003)),                            "⚔"),
+    n("atk_a8", T,"atk_a7", "집중 포화",     "rare",      multi(ev("DMG_PCT",0.012),ev("BOSS_DMG_PCT",0.005)),                            "💥"),
+    n("atk_a9", T,"atk_a8", "화염 폭풍",     "epic",      multi(ev("DMG_PCT",0.020),ev("BOSS_DMG_PCT",0.010)),                            "🔥"),
+    n("atk_a10",T,"atk_a3", "전쟁의 기운",   "rare",      multi(ev("DMG_PCT",0.015),ev("PRESSURE_DMG_PCT",0.008)),                        "⚔"),
+    n("atk_a11",T,"atk_a4", "불굴의 화력",   "epic",      multi(ev("DMG_PCT",0.022),ev("PRESSURE_DMG_PCT",0.010),ev("BOSS_DMG_PCT",0.005)),"💥"),
+    // Branch B – boss / elite
+    n("atk_b1", T,"atk_r",  "보스 추적",     "common",    ev("BOSS_DMG_PCT",0.005),                                                      "👑"),
+    n("atk_b2", T,"atk_b1", "보스 감지",     "uncommon",  ev("BOSS_DMG_PCT",0.008),                                                      "👑"),
+    n("atk_b3", T,"atk_b2", "보스 연구",     "uncommon",  ev("BOSS_DMG_PCT",0.012),                                                      "👑"),
+    n("atk_b4", T,"atk_b3", "보스 압박",     "rare",      ev("BOSS_DMG_PCT",0.018),                                                      "👑"),
+    n("atk_b5", T,"atk_b4", "보스 파괴자",   "epic",      ev("BOSS_DMG_PCT",0.026),                                                      "👑"),
+    n("atk_b6", T,"atk_b5", "보스 학살자",   "legendary", ev("BOSS_DMG_PCT",0.040),                                                      "♔"),
+    n("atk_b7", T,"atk_b2", "엘리트 추적",   "uncommon",  ev("ELITE_DMG_PCT",0.008),                                                     "★"),
+    n("atk_b8", T,"atk_b7", "엘리트 분쇄",   "rare",      ev("ELITE_DMG_PCT",0.015),                                                     "★"),
+    n("atk_b9", T,"atk_b8", "엘리트 파괴자", "epic",      ev("ELITE_DMG_PCT",0.025),                                                     "★"),
+    n("atk_b10",T,"atk_b9", "엘리트 분쇄기", "legendary", ev("ELITE_DMG_PCT",0.040),                                                     "★"),
+    n("atk_b11",T,"atk_b3", "정밀 사격",     "rare",      multi(ev("BOSS_DMG_PCT",0.012),ev("ELITE_DMG_PCT",0.006)),                      "👑"),
+    // Branch C – execute
+    n("atk_c1", T,"atk_r",  "처형 준비",     "common",    ev("EXECUTE_DMG_PCT",0.005),                                                   "†"),
+    n("atk_c2", T,"atk_c1", "처형 기술",     "uncommon",  ev("EXECUTE_DMG_PCT",0.008),                                                   "†"),
+    n("atk_c3", T,"atk_c2", "처형 전문가",   "rare",      ev("EXECUTE_DMG_PCT",0.015),                                                   "†"),
+    n("atk_c4", T,"atk_c3", "처형 마스터",   "epic",      ev("EXECUTE_DMG_PCT",0.025),                                                   "†"),
+    n("atk_c5", T,"atk_c4", "처형자의 검",   "legendary", ev("EXECUTE_DMG_PCT",0.040),                                                   "†"),
+    n("atk_c6", T,"atk_c2", "냉혹한 판단",   "uncommon",  multi(ev("EXECUTE_DMG_PCT",0.006),ev("DMG_PCT",0.003)),                         "†"),
+    n("atk_c7", T,"atk_c6", "냉혹한 사냥꾼", "rare",      multi(ev("EXECUTE_DMG_PCT",0.010),ev("BOSS_DMG_PCT",0.005)),                    "†"),
+    // Branch D – pressure / area
+    n("atk_d1", T,"atk_r",  "압박 훈련",     "common",    ev("PRESSURE_DMG_PCT",0.005),                                                  "◈"),
+    n("atk_d2", T,"atk_d1", "압박 강화",     "uncommon",  ev("PRESSURE_DMG_PCT",0.008),                                                  "◈"),
+    n("atk_d3", T,"atk_d2", "압박 마스터",   "rare",      ev("PRESSURE_DMG_PCT",0.015),                                                  "◈"),
+    n("atk_d4", T,"atk_d3", "극한 압박",     "epic",      multi(ev("PRESSURE_DMG_PCT",0.022),ev("DMG_PCT",0.006)),                        "◈"),
+    n("atk_d5", T,"atk_d4", "전장의 왕",     "legendary", multi(ev("PRESSURE_DMG_PCT",0.033),ev("DMG_PCT",0.010),ev("ELITE_DMG_PCT",0.008)),"♛"),
+    n("atk_d6", T,"atk_d2", "전장 통제",     "uncommon",  multi(ev("PRESSURE_DMG_PCT",0.007),ev("ELITE_DMG_PCT",0.004)),                  "◈"),
+    n("atk_d7", T,"atk_d6", "전장 지배",     "rare",      multi(ev("PRESSURE_DMG_PCT",0.012),ev("ELITE_DMG_PCT",0.008)),                  "◈"),
   ];
-
-  // ── Generate branch nodes ────────────────────────────────────────────────
-  for (let i = 0; i < branchDefs.length; i++) {
-    const b  = branchDefs[i];
-    const pv = (i + N - 1) % N;
-    const nx = (i + 1) % N;
-
-    const gateId  = `g${i}`;
-    const notId   = `n${i}`;
-    const preksId = `pk${i}`;
-    const ksId    = `ks_${b.key}`;
-
-    const gatePos  = bp(b.angle, R_GATE);
-    const notPos   = bp(b.angle, R_NOT);
-    const preksPos = bp(b.angle, R_PREKS);
-    const ksPos    = bp(b.angle, R_KS);
-
-    add(gateId,  gatePos,  NODE_TYPE.REGULAR,
-      b.gate.name, b.gate.desc, b.gate.effect,
-      ["start", `g${pv}`, `g${nx}`, notId],
-      b.region, getRegionGlyph(b.region));
-
-    add(notId,   notPos,   NODE_TYPE.NOTABLE,
-      b.not.name, b.not.desc, b.not.effect,
-      [gateId, preksId],
-      b.region, b.not.glyph);
-
-    add(preksId, preksPos, NODE_TYPE.REGULAR,
-      b.preks.name, b.preks.desc, b.preks.effect,
-      [notId, ksId],
-      b.region, getRegionGlyph(b.region));
-
-    add(ksId,    ksPos,    NODE_TYPE.KEYSTONE,
-      b.ks.name, b.ks.desc, b.ks.effect,
-      [preksId],
-      b.region, b.ks.glyph);
-  }
-
-  // ── Bridge nodes between regions ────────────────────────────────────────
-  // ATK↔LUCK (between i=4/96° and i=5/120° → 108°)
-  add("bridge_atk_luck", bp(108, 310), NODE_TYPE.REGULAR,
-    "행운의 전사",  "공격력 +2% · 등급업 +2%",
-    { kind:"DMG_RARITY", dmg:0.02, rarity:0.02 },
-    ["g4", "g5"], NODE_REGION.LUCK, "⚡");
-
-  // LUCK↔DEF (between i=7/168° and i=8/192° → 180°)
-  add("bridge_luck_def", bp(180, 310), NODE_TYPE.REGULAR,
-    "방어 계략",   "쿨다운 -1.5% · 등급업 +1%",
-    { kind:"CD_LUCK", cd:0.015, rarity:0.01 },
-    ["g7", "g8"], NODE_REGION.DEF, "⬟");
-
-  // DEF↔HUNT (between i=10/240° and i=11/264° → 252°)
-  add("bridge_def_hunt", bp(252, 310), NODE_TYPE.REGULAR,
-    "수호의 창",   "관통 +0.2 · 쿨다운 -1.5%",
-    { kind:"PEN_CD", pen:0.2, cd:0.015 },
-    ["g10", "g11"], NODE_REGION.HUNT, "⬟");
-
-  // HUNT↔ATK (between i=14/336° and i=0/0° → 348°)
-  add("bridge_hunt_atk", bp(348, 310), NODE_TYPE.REGULAR,
-    "공략 마스터", "공격력 +2% · 보스 피해 +2%",
-    { kind:"DMG_BOSS_COMBO", dmg:0.02, boss:0.02 },
-    ["g14", "g0"], NODE_REGION.ATK, "⬟");
-
-  return nodes;
 }
 
-export const PASSIVE_NODES    = buildNodes();
-export const PASSIVE_NODE_MAP = new Map(PASSIVE_NODES.map(n => [n.id, n]));
+// ── ASPD Tree (공격속도) ──────────────────────────────────────────────────────
+function buildASPD() {
+  const T = "ASPD";
+  return [
+    n("aspd_r",  T,null,      "속도의 각성",   "common",    ev("HOT_ASPD_ADD",0.005),                                            "≫"),
+    // Branch A – HOT aspd
+    n("aspd_a1", T,"aspd_r",  "반응 향상",     "common",    ev("HOT_ASPD_ADD",0.007),                                            "≫"),
+    n("aspd_a2", T,"aspd_a1", "빠른 준비",     "uncommon",  ev("HOT_ASPD_ADD",0.010),                                            "≫"),
+    n("aspd_a3", T,"aspd_a2", "고속 연사",     "uncommon",  ev("HOT_ASPD_ADD",0.013),                                            "≫"),
+    n("aspd_a4", T,"aspd_a3", "속공 마스터",   "rare",      ev("HOT_ASPD_ADD",0.018),                                            "⚡"),
+    n("aspd_a5", T,"aspd_a4", "폭풍 연사",     "epic",      ev("HOT_ASPD_ADD",0.026),                                            "⚡"),
+    n("aspd_a6", T,"aspd_a5", "공속의 폭풍",   "legendary", ev("HOT_ASPD_ADD",0.040),                                            "≫"),
+    n("aspd_a7", T,"aspd_a2", "HOT 안정화",    "uncommon",  multi(ev("HOT_ASPD_ADD",0.008),ev("HOT_CRIT_ADD",0.002)),            "≫"),
+    n("aspd_a8", T,"aspd_a7", "HOT 과부하",    "rare",      multi(ev("HOT_ASPD_ADD",0.012),ev("HOT_CRIT_ADD",0.003)),            "⚡"),
+    n("aspd_a9", T,"aspd_a8", "HOT 마스터",    "epic",      multi(ev("HOT_ASPD_ADD",0.020),ev("HOT_CRIT_ADD",0.005)),            "⚡"),
+    n("aspd_a10",T,"aspd_a3", "HOT 극한",      "rare",      ev("HOT_ASPD_ADD",0.016),                                            "⚡"),
+    n("aspd_a11",T,"aspd_a4", "폭발 속도",     "epic",      multi(ev("HOT_ASPD_ADD",0.022),ev("CD_REDUCE_PCT",0.005)),           "⚡"),
+    // Branch B – cooldown
+    n("aspd_b1", T,"aspd_r",  "자동 서보",     "common",    ev("CD_REDUCE_PCT",0.003),                                           "⟳"),
+    n("aspd_b2", T,"aspd_b1", "향상 서보",     "uncommon",  ev("CD_REDUCE_PCT",0.005),                                           "⟳"),
+    n("aspd_b3", T,"aspd_b2", "냉각 장치",     "uncommon",  ev("CD_REDUCE_PCT",0.007),                                           "⟳"),
+    n("aspd_b4", T,"aspd_b3", "서보 오버클럭", "rare",      ev("CD_REDUCE_PCT",0.010),                                           "⟳"),
+    n("aspd_b5", T,"aspd_b4", "극한 냉각",     "epic",      ev("CD_REDUCE_PCT",0.015),                                           "⟳"),
+    n("aspd_b6", T,"aspd_b5", "찰나의 사수",   "legendary", ev("CD_REDUCE_PCT",0.022),                                           "⟳"),
+    n("aspd_b7", T,"aspd_b2", "준비 단축",     "uncommon",  multi(ev("CD_REDUCE_PCT",0.004),ev("HOT_ASPD_ADD",0.003)),           "⟳"),
+    n("aspd_b8", T,"aspd_b7", "빠른 재장전",   "rare",      multi(ev("CD_REDUCE_PCT",0.007),ev("HOT_ASPD_ADD",0.005)),           "⟳"),
+    n("aspd_b9", T,"aspd_b8", "즉시 재장전",   "epic",      multi(ev("CD_REDUCE_PCT",0.011),ev("HOT_ASPD_ADD",0.009)),           "⟳"),
+    n("aspd_b10",T,"aspd_b3", "서보 강화",     "rare",      ev("CD_REDUCE_PCT",0.009),                                           "⟳"),
+    // Branch C – speed+damage synergy
+    n("aspd_c1", T,"aspd_r",  "전투 동조",     "common",    multi(ev("HOT_ASPD_ADD",0.004),ev("DMG_PCT",0.002)),                  "≫"),
+    n("aspd_c2", T,"aspd_c1", "전투 리듬",     "uncommon",  multi(ev("HOT_ASPD_ADD",0.006),ev("DMG_PCT",0.003)),                  "≫"),
+    n("aspd_c3", T,"aspd_c2", "완벽한 리듬",   "rare",      multi(ev("HOT_ASPD_ADD",0.010),ev("DMG_PCT",0.005)),                  "⚡"),
+    n("aspd_c4", T,"aspd_c3", "전투의 신",     "epic",      multi(ev("HOT_ASPD_ADD",0.016),ev("CD_REDUCE_PCT",0.007),ev("DMG_PCT",0.006)),"⚡"),
+    n("aspd_c5", T,"aspd_c4", "광속의 사수",   "legendary", multi(ev("HOT_ASPD_ADD",0.025),ev("CD_REDUCE_PCT",0.011),ev("DMG_PCT",0.009)),"≫"),
+    n("aspd_c6", T,"aspd_c2", "속사 준비",     "uncommon",  multi(ev("HOT_ASPD_ADD",0.005),ev("CD_REDUCE_PCT",0.003)),            "≫"),
+    n("aspd_c7", T,"aspd_c6", "속사 마스터",   "rare",      multi(ev("HOT_ASPD_ADD",0.009),ev("CD_REDUCE_PCT",0.005)),            "⚡"),
+    n("aspd_c8", T,"aspd_c7", "속사 폭풍",     "epic",      multi(ev("HOT_ASPD_ADD",0.015),ev("CD_REDUCE_PCT",0.009)),            "⚡"),
+    n("aspd_c9", T,"aspd_c2", "리듬 가속",     "uncommon",  ev("HOT_ASPD_ADD",0.006),                                            "≫"),
+    n("aspd_c10",T,"aspd_c9", "연속 전투",     "rare",      multi(ev("HOT_ASPD_ADD",0.010),ev("HOT_CRIT_ADD",0.002)),            "⚡"),
+  ];
+}
+
+// ── CRIT Tree (크리티컬) ──────────────────────────────────────────────────────
+function buildCRIT() {
+  const T = "CRIT";
+  return [
+    n("crit_r",  T,null,      "급소 감각",     "common",    ev("CRIT_CHANCE_ADD",0.002),                                                    "✦"),
+    // Branch A – crit chance
+    n("crit_a1", T,"crit_r",  "급소 훈련",     "common",    ev("CRIT_CHANCE_ADD",0.003),                                                    "✦"),
+    n("crit_a2", T,"crit_a1", "정밀 타격",     "uncommon",  ev("CRIT_CHANCE_ADD",0.004),                                                    "✦"),
+    n("crit_a3", T,"crit_a2", "치명적 정밀",   "uncommon",  ev("CRIT_CHANCE_ADD",0.005),                                                    "✦"),
+    n("crit_a4", T,"crit_a3", "급소 마스터",   "rare",      ev("CRIT_CHANCE_ADD",0.007),                                                    "💥"),
+    n("crit_a5", T,"crit_a4", "치명적 감각",   "epic",      ev("CRIT_CHANCE_ADD",0.010),                                                    "💥"),
+    n("crit_a6", T,"crit_a5", "크리티컬 신",   "legendary", ev("CRIT_CHANCE_ADD",0.015),                                                    "✦"),
+    n("crit_a7", T,"crit_a2", "집중된 시선",   "uncommon",  multi(ev("CRIT_CHANCE_ADD",0.003),ev("CRIT_MULT_ADD",0.015)),                   "✦"),
+    n("crit_a8", T,"crit_a7", "날카로운 직관", "rare",      multi(ev("CRIT_CHANCE_ADD",0.005),ev("CRIT_MULT_ADD",0.025)),                   "💥"),
+    n("crit_a9", T,"crit_a8", "본능적 급소",   "epic",      multi(ev("CRIT_CHANCE_ADD",0.008),ev("CRIT_MULT_ADD",0.040)),                   "💥"),
+    n("crit_a10",T,"crit_a3", "연속 급소",     "rare",      ev("CRIT_CHANCE_ADD",0.006),                                                    "✦"),
+    n("crit_a11",T,"crit_a4", "급소 특화",     "epic",      multi(ev("CRIT_CHANCE_ADD",0.009),ev("BOSS_DMG_PCT",0.004)),                    "💥"),
+    // Branch B – crit mult
+    n("crit_b1", T,"crit_r",  "배율 훈련",     "common",    ev("CRIT_MULT_ADD",0.015),                                                      "◈"),
+    n("crit_b2", T,"crit_b1", "배율 강화",     "uncommon",  ev("CRIT_MULT_ADD",0.022),                                                      "◈"),
+    n("crit_b3", T,"crit_b2", "치명 배율",     "uncommon",  ev("CRIT_MULT_ADD",0.030),                                                      "◈"),
+    n("crit_b4", T,"crit_b3", "강력한 일격",   "rare",      ev("CRIT_MULT_ADD",0.045),                                                      "💥"),
+    n("crit_b5", T,"crit_b4", "파괴적 일격",   "epic",      ev("CRIT_MULT_ADD",0.065),                                                      "💥"),
+    n("crit_b6", T,"crit_b5", "크리티컬 폭발", "legendary", ev("CRIT_MULT_ADD",0.100),                                                      "✦"),
+    n("crit_b7", T,"crit_b2", "조준 강화",     "uncommon",  multi(ev("CRIT_MULT_ADD",0.018),ev("CRIT_CHANCE_ADD",0.002)),                   "◈"),
+    n("crit_b8", T,"crit_b7", "완벽한 조준",   "rare",      multi(ev("CRIT_MULT_ADD",0.032),ev("CRIT_CHANCE_ADD",0.003)),                   "💥"),
+    n("crit_b9", T,"crit_b8", "신의 조준",     "epic",      multi(ev("CRIT_MULT_ADD",0.055),ev("CRIT_CHANCE_ADD",0.005)),                   "💥"),
+    n("crit_b10",T,"crit_b3", "배율 특화",     "rare",      ev("CRIT_MULT_ADD",0.040),                                                      "◈"),
+    // Branch C – HOT crit
+    n("crit_c1", T,"crit_r",  "HOT 치명",      "common",    ev("HOT_CRIT_ADD",0.003),                                                       "⚡"),
+    n("crit_c2", T,"crit_c1", "HOT 치명 강화", "uncommon",  ev("HOT_CRIT_ADD",0.005),                                                       "⚡"),
+    n("crit_c3", T,"crit_c2", "HOT 치명 마스터","rare",     ev("HOT_CRIT_ADD",0.008),                                                       "⚡"),
+    n("crit_c4", T,"crit_c3", "HOT 치명 폭발", "epic",      ev("HOT_CRIT_ADD",0.012),                                                       "⚡"),
+    n("crit_c5", T,"crit_c4", "HOT 치명 신화", "legendary", ev("HOT_CRIT_ADD",0.018),                                                       "⚡"),
+    n("crit_c6", T,"crit_c2", "HOT 시너지",    "uncommon",  multi(ev("HOT_CRIT_ADD",0.004),ev("CRIT_CHANCE_ADD",0.002)),                    "⚡"),
+    n("crit_c7", T,"crit_c6", "HOT 공명",      "rare",      multi(ev("HOT_CRIT_ADD",0.007),ev("CRIT_CHANCE_ADD",0.003),ev("CRIT_MULT_ADD",0.015)),"⚡"),
+    // Branch D – boss/elite crit
+    n("crit_d1", T,"crit_r",  "보스 급소",     "common",    multi(ev("CRIT_CHANCE_ADD",0.002),ev("BOSS_DMG_PCT",0.003)),                    "👑"),
+    n("crit_d2", T,"crit_d1", "보스 치명",     "uncommon",  multi(ev("CRIT_CHANCE_ADD",0.003),ev("BOSS_DMG_PCT",0.004)),                    "👑"),
+    n("crit_d3", T,"crit_d2", "보스 약점 공략","rare",      multi(ev("CRIT_CHANCE_ADD",0.004),ev("BOSS_DMG_PCT",0.007),ev("CRIT_MULT_ADD",0.018)),"👑"),
+    n("crit_d4", T,"crit_d3", "처형 급소",     "epic",      multi(ev("CRIT_CHANCE_ADD",0.006),ev("BOSS_DMG_PCT",0.010),ev("CRIT_MULT_ADD",0.035)),"👑"),
+    n("crit_d5", T,"crit_d4", "절대 급소",     "legendary", multi(ev("CRIT_CHANCE_ADD",0.012),ev("CRIT_MULT_ADD",0.060),ev("BOSS_DMG_PCT",0.012)),"✦"),
+    n("crit_d6", T,"crit_d2", "엘리트 급소",   "uncommon",  multi(ev("CRIT_CHANCE_ADD",0.002),ev("ELITE_DMG_PCT",0.003)),                   "★"),
+    n("crit_d7", T,"crit_d6", "엘리트 치명",   "rare",      multi(ev("CRIT_CHANCE_ADD",0.003),ev("ELITE_DMG_PCT",0.006),ev("CRIT_MULT_ADD",0.018)),"★"),
+  ];
+}
+
+// ── CHAIN Tree (연쇄) ─────────────────────────────────────────────────────────
+function buildCHAIN() {
+  const T = "CHAIN";
+  return [
+    n("chn_r",   T,null,      "연쇄의 본능",   "common",    ev("MULTI_HIT_CHANCE",0.005),                                                     "∞"),
+    // Branch A – multi-hit
+    n("chn_a1",  T,"chn_r",   "연속 타격",     "common",    ev("MULTI_HIT_CHANCE",0.007),                                                     "∞"),
+    n("chn_a2",  T,"chn_a1",  "연속 사격",     "uncommon",  ev("MULTI_HIT_CHANCE",0.010),                                                     "∞"),
+    n("chn_a3",  T,"chn_a2",  "다중 연사",     "uncommon",  ev("MULTI_HIT_CHANCE",0.014),                                                     "∞"),
+    n("chn_a4",  T,"chn_a3",  "연사 마스터",   "rare",      ev("MULTI_HIT_CHANCE",0.020),                                                     "⚡"),
+    n("chn_a5",  T,"chn_a4",  "폭풍 연사",     "epic",      ev("MULTI_HIT_CHANCE",0.030),                                                     "⚡"),
+    n("chn_a6",  T,"chn_a5",  "다중 폭발",     "legendary", ev("MULTI_HIT_CHANCE",0.048),                                                     "∞"),
+    n("chn_a7",  T,"chn_a2",  "연속 준비",     "uncommon",  multi(ev("MULTI_HIT_CHANCE",0.008),ev("PEN_ADD",0.010)),                          "∞"),
+    n("chn_a8",  T,"chn_a7",  "연속 강화",     "rare",      multi(ev("MULTI_HIT_CHANCE",0.014),ev("PEN_ADD",0.018)),                          "⚡"),
+    n("chn_a9",  T,"chn_a8",  "연속 극한",     "epic",      multi(ev("MULTI_HIT_CHANCE",0.022),ev("PEN_ADD",0.028)),                          "⚡"),
+    n("chn_a10", T,"chn_a3",  "연쇄 폭격",     "rare",      ev("MULTI_HIT_CHANCE",0.018),                                                     "∞"),
+    n("chn_a11", T,"chn_a4",  "무한 연쇄",     "epic",      multi(ev("MULTI_HIT_CHANCE",0.026),ev("BOSS_EXTRA_LEGEND_CHANCE",0.004)),          "⚡"),
+    // Branch B – penetration
+    n("chn_b1",  T,"chn_r",   "관통 훈련",     "common",    ev("PEN_ADD",0.015),                                                              "↣"),
+    n("chn_b2",  T,"chn_b1",  "관통 강화",     "uncommon",  ev("PEN_ADD",0.022),                                                              "↣"),
+    n("chn_b3",  T,"chn_b2",  "장갑 파쇄",     "uncommon",  ev("PEN_ADD",0.030),                                                              "↣"),
+    n("chn_b4",  T,"chn_b3",  "장갑 관통",     "rare",      ev("PEN_ADD",0.045),                                                              "↣"),
+    n("chn_b5",  T,"chn_b4",  "관통의 화살",   "epic",      ev("PEN_ADD",0.065),                                                              "↣"),
+    n("chn_b6",  T,"chn_b5",  "관통의 신화",   "legendary", ev("PEN_ADD",0.100),                                                              "↣"),
+    n("chn_b7",  T,"chn_b2",  "연쇄 관통",     "uncommon",  multi(ev("PEN_ADD",0.020),ev("MULTI_HIT_CHANCE",0.005)),                          "↣"),
+    n("chn_b8",  T,"chn_b7",  "연쇄 파쇄",     "rare",      multi(ev("PEN_ADD",0.035),ev("MULTI_HIT_CHANCE",0.008)),                          "↣"),
+    n("chn_b9",  T,"chn_b3",  "관통 집중",     "rare",      ev("PEN_ADD",0.038),                                                              "↣"),
+    // Branch C – luck / rarity
+    n("chn_c1",  T,"chn_r",   "도박사의 감각", "common",    ev("RARITY_UP_ADD",0.003),                                                        "◆"),
+    n("chn_c2",  T,"chn_c1",  "행운의 감각",   "uncommon",  ev("RARITY_UP_ADD",0.005),                                                        "◆"),
+    n("chn_c3",  T,"chn_c2",  "도박의 신",     "rare",      ev("RARITY_UP_ADD",0.008),                                                        "◆"),
+    n("chn_c4",  T,"chn_c3",  "황금 손길",     "epic",      ev("RARITY_UP_ADD",0.012),                                                        "◆"),
+    n("chn_c5",  T,"chn_c4",  "인생역전",      "legendary", ev("RARITY_UP_ADD",0.020),                                                        "◆"),
+    n("chn_c6",  T,"chn_c2",  "재투자",        "uncommon",  ev("START_COMMON_ADD",0.3),                                                       "◇"),
+    n("chn_c7",  T,"chn_c6",  "황금 투자",     "rare",      multi(ev("START_COMMON_ADD",0.5),ev("START_RARE_ADD",0.2)),                       "◇"),
+    n("chn_c8",  T,"chn_c7",  "백만장자",      "epic",      multi(ev("START_RARE_ADD",0.5),ev("BOSS_EXTRA_LEGEND_CHANCE",0.005)),              "◆"),
+    n("chn_c9",  T,"chn_c3",  "환급의 여신",   "rare",      ev("REROLL_REFUND_CHANCE",0.008),                                                 "◇"),
+    // Branch D – boss legend / jackpot
+    n("chn_d1",  T,"chn_r",   "보스 전설",     "common",    ev("BOSS_EXTRA_LEGEND_CHANCE",0.003),                                             "♔"),
+    n("chn_d2",  T,"chn_d1",  "전설 사냥",     "uncommon",  ev("BOSS_EXTRA_LEGEND_CHANCE",0.005),                                             "♔"),
+    n("chn_d3",  T,"chn_d2",  "황금 사냥",     "rare",      ev("BOSS_EXTRA_LEGEND_CHANCE",0.008),                                             "♔"),
+    n("chn_d4",  T,"chn_d3",  "연쇄 반응",     "epic",      multi(ev("BOSS_EXTRA_LEGEND_CHANCE",0.012),ev("MYTHIC_JACKPOT_CHANCE",0.005)),     "∞"),
+    n("chn_d5",  T,"chn_d4",  "연쇄 폭발",     "legendary", multi(ev("BOSS_EXTRA_LEGEND_CHANCE",0.020),ev("MYTHIC_JACKPOT_CHANCE",0.010)),     "∞"),
+    n("chn_d6",  T,"chn_d2",  "행운 배가",     "uncommon",  multi(ev("BOSS_EXTRA_LEGEND_CHANCE",0.004),ev("RARITY_UP_ADD",0.003)),             "♔"),
+    n("chn_d7",  T,"chn_d6",  "연금술사",      "rare",      multi(ev("BOSS_EXTRA_LEGEND_CHANCE",0.007),ev("RARITY_UP_ADD",0.005),ev("MYTHIC_JACKPOT_CHANCE",0.003)),"♔"),
+  ];
+}
+
+// ─── Flatten all nodes & build map ──────────────────────────────────────────
+
+export const PASSIVE_NODES = [
+  ...buildATK(), ...buildASPD(), ...buildCRIT(), ...buildCHAIN(),
+];
+export const PASSIVE_NODE_MAP = new Map(PASSIVE_NODES.map(nd => [nd.id, nd]));
+
+export function getTreeNodes(treeKey) {
+  return PASSIVE_NODES.filter(nd => nd.tree === treeKey);
+}
+
+// ─── Layout computation ──────────────────────────────────────────────────────
+
+const L_SX = 115;  // px per subtree-width unit
+const L_SY = 130;  // px per depth level
+const L_MG = 70;   // margin
+
+function computeLayout(nodes) {
+  const childrenOf = new Map(nodes.map(nd => [nd.id, []]));
+  const nodeById   = new Map(nodes.map(nd => [nd.id, nd]));
+  let root = null;
+
+  for (const nd of nodes) {
+    if (!nd.parent) { root = nd; continue; }
+    const list = childrenOf.get(nd.parent);
+    if (list) list.push(nd.id);
+  }
+  if (!root) return new Map();
+
+  const widths = new Map();
+  function calcW(id) {
+    const ch = childrenOf.get(id) ?? [];
+    if (!ch.length) { widths.set(id, 1); return 1; }
+    const w = ch.reduce((s, c) => s + calcW(c), 0);
+    widths.set(id, w);
+    return w;
+  }
+  calcW(root.id);
+
+  const pos = new Map();
+  function place(id, depth, left) {
+    const w = widths.get(id) ?? 1;
+    pos.set(id, { x: Math.round(L_MG + (left + w / 2) * L_SX),
+                  y: Math.round(L_MG + depth * L_SY) });
+    const ch = childrenOf.get(id) ?? [];
+    let cx = left;
+    for (const c of ch) {
+      place(c, depth + 1, cx);
+      cx += widths.get(c) ?? 1;
+    }
+  }
+  place(root.id, 0, 0);
+  return pos;
+}
+
+// Precomputed positions for all trees
+export const NODE_POSITIONS = new Map();
+export const TREE_BOUNDS    = new Map();
+
+for (const tk of TREE_KEYS) {
+  const tNodes  = getTreeNodes(tk);
+  const layout  = computeLayout(tNodes);
+  let maxX = 0, maxY = 0;
+  for (const [id, p] of layout) {
+    NODE_POSITIONS.set(id, p);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  TREE_BOUNDS.set(tk, { w: maxX + L_MG, h: maxY + L_MG });
+}
 
 // ─── State management ────────────────────────────────────────────────────────
 
 export function defaultMetaState() {
-  return { v: META_VERSION, xp: 0, allocated: [] };
+  return { v: META_VERSION, xp: 0, levels: {} };
 }
 
 export function loadMetaState() {
@@ -262,275 +300,149 @@ export function loadMetaState() {
     const raw = localStorage.getItem(META_STORAGE_KEY);
     if (raw) {
       const obj = JSON.parse(raw);
-      if (obj && obj.v === META_VERSION) {
+      if (obj?.v === META_VERSION) {
         const out = defaultMetaState();
-        out.xp        = Math.max(0, Math.floor(obj.xp ?? 0));
-        out.allocated = Array.isArray(obj.allocated)
-          ? obj.allocated.filter(id => PASSIVE_NODE_MAP.has(id))
-          : [];
+        out.xp     = Math.max(0, Math.floor(obj.xp ?? 0));
+        out.levels = (typeof obj.levels === "object" && obj.levels) ? obj.levels : {};
         return out;
       }
     }
-    // Migrate from any older version: preserve XP, reset nodes
-    const keys = ["lotto_td_meta_v2", "lotto_td_meta_v1"];
-    for (const k of keys) {
-      const legacy = localStorage.getItem(k);
-      if (legacy) {
-        const obj = JSON.parse(legacy);
-        const xp  = Math.max(0, Math.floor(obj?.xp ?? 0));
-        return { v: META_VERSION, xp, allocated: [] };
+    // Migrate: preserve XP, reset nodes
+    for (const k of ["lotto_td_meta_v3","lotto_td_meta_v2","lotto_td_meta_v1"]) {
+      const leg = localStorage.getItem(k);
+      if (leg) {
+        const obj = JSON.parse(leg);
+        return { v: META_VERSION, xp: Math.max(0, Math.floor(obj?.xp ?? 0)), levels: {} };
       }
     }
-  } catch { /* ignore */ }
+  } catch { /**/ }
   return defaultMetaState();
 }
 
 export function saveMetaState(meta) {
   try {
     localStorage.setItem(META_STORAGE_KEY, JSON.stringify({
-      v:         META_VERSION,
-      xp:        meta.xp ?? 0,
-      allocated: meta.allocated ?? [],
+      v: META_VERSION, xp: meta.xp ?? 0, levels: meta.levels ?? {},
     }));
-  } catch { /* ignore */ }
+  } catch { /**/ }
 }
 
-export function isAllocated(meta, id) {
-  return (meta.allocated ?? []).includes(id);
+export function getLevel(meta, id)   { return (meta.levels ?? {})[id] ?? 0; }
+export function isUnlocked(meta, id) { return getLevel(meta, id) > 0; }
+
+/** Can level up from current level to current+1 */
+export function canLevelUp(meta, nodeId) {
+  const nd = PASSIVE_NODE_MAP.get(nodeId);
+  if (!nd) return { ok:false, reason:"NOT_FOUND" };
+  const lv = getLevel(meta, nodeId);
+  if (lv >= nd.maxLevel) return { ok:false, reason:"MAX_LEVEL", lv };
+
+  // Parent must be unlocked (roots have no parent)
+  if (nd.parent && !isUnlocked(meta, nd.parent))
+    return { ok:false, reason:"PARENT_LOCKED" };
+
+  const cost = levelCost(nd.rarity, lv + 1);
+  if ((meta.xp ?? 0) < cost) return { ok:false, reason:"NO_XP", cost };
+  return { ok:true, cost, lv };
 }
 
-export function canAllocate(meta, nodeId) {
-  const node = PASSIVE_NODE_MAP.get(nodeId);
-  if (!node) return { ok: false, reason: "NOT_FOUND" };
-  if (node.type === NODE_TYPE.START) return { ok: false, reason: "START" };
-  if (isAllocated(meta, nodeId)) return { ok: false, reason: "ALREADY" };
+/** Can level down (decrease by 1). Level → 0 requires no children be unlocked. */
+export function canLevelDown(meta, nodeId) {
+  const nd = PASSIVE_NODE_MAP.get(nodeId);
+  if (!nd) return { ok:false, reason:"NOT_FOUND" };
+  const lv = getLevel(meta, nodeId);
+  if (lv <= 0) return { ok:false, reason:"NOT_PURCHASED" };
 
-  const cost = NODE_COST[node.type] ?? 25;
-  if ((meta.xp ?? 0) < cost) return { ok: false, reason: "NO_XP", cost };
-
-  const allocSet = new Set(meta.allocated ?? []);
-  allocSet.add("start");
-  const connected = node.connections.some(id => allocSet.has(id));
-  if (!connected) return { ok: false, reason: "NOT_CONNECTED", cost };
-
-  return { ok: true, cost };
+  if (lv === 1) {
+    // Check no child is unlocked
+    const children = PASSIVE_NODES.filter(n => n.parent === nodeId);
+    if (children.some(c => isUnlocked(meta, c.id)))
+      return { ok:false, reason:"HAS_CHILDREN" };
+  }
+  const refund = levelCost(nd.rarity, lv);
+  return { ok:true, refund, lv };
 }
 
-export function allocateNode(meta, nodeId) {
-  const chk = canAllocate(meta, nodeId);
+export function levelUpNode(meta, nodeId) {
+  const chk = canLevelUp(meta, nodeId);
   if (!chk.ok) return false;
+  if (!meta.levels) meta.levels = {};
+  meta.levels[nodeId] = (meta.levels[nodeId] ?? 0) + 1;
   meta.xp = Math.max(0, (meta.xp ?? 0) - chk.cost);
-  if (!Array.isArray(meta.allocated)) meta.allocated = [];
-  if (!meta.allocated.includes(nodeId)) meta.allocated.push(nodeId);
   return true;
 }
 
-/** 환불 가능 여부: 제거해도 나머지 노드가 여전히 start에 연결되어야 함 */
-export function canDeallocate(meta, nodeId) {
-  if (!isAllocated(meta, nodeId)) return { ok: false, reason: "NOT_ALLOCATED" };
-  if (nodeId === "start") return { ok: false, reason: "START" };
-
-  const remaining    = (meta.allocated ?? []).filter(id => id !== nodeId);
-  const remainingSet = new Set(remaining);
-  remainingSet.add("start");
-
-  // BFS from start through remaining allocated nodes
-  const visited = new Set(["start"]);
-  const queue   = ["start"];
-  while (queue.length > 0) {
-    const cur  = queue.shift();
-    const node = PASSIVE_NODE_MAP.get(cur);
-    if (!node) continue;
-    for (const connId of (node.connections || [])) {
-      if (!visited.has(connId) && remainingSet.has(connId)) {
-        visited.add(connId);
-        queue.push(connId);
-      }
-    }
-  }
-
-  for (const id of remaining) {
-    if (!visited.has(id)) return { ok: false, reason: "WOULD_DISCONNECT" };
-  }
-
-  const cost = NODE_COST[PASSIVE_NODE_MAP.get(nodeId)?.type ?? "regular"];
-  return { ok: true, cost };
-}
-
-export function deallocateNode(meta, nodeId) {
-  const chk = canDeallocate(meta, nodeId);
+export function levelDownNode(meta, nodeId) {
+  const chk = canLevelDown(meta, nodeId);
   if (!chk.ok) return false;
-  meta.allocated = (meta.allocated ?? []).filter(id => id !== nodeId);
-  meta.xp        = (meta.xp ?? 0) + chk.cost; // 전액 환불
+  meta.levels[nodeId] = chk.lv - 1;
+  if (meta.levels[nodeId] === 0) delete meta.levels[nodeId];
+  meta.xp = (meta.xp ?? 0) + chk.refund;
   return true;
 }
 
+/** For badge: true if any node can be leveled up */
 export function canAllocateAny(meta) {
-  for (const node of PASSIVE_NODES) {
-    if (node.type === NODE_TYPE.START) continue;
-    if (canAllocate(meta, node.id).ok) return true;
+  for (const nd of PASSIVE_NODES) {
+    if (canLevelUp(meta, nd.id).ok) return true;
   }
   return false;
 }
 
 // ─── Modifier computation ────────────────────────────────────────────────────
 
-export function computeSkillMods(meta) {
-  const allocSet = new Set(meta.allocated ?? []);
-  allocSet.add("start");
-
-  const mods = {
-    dmgPct:                0,
-    bossDmgPct:            0,
-    eliteDmgPct:           0,
-    pressureDmgPct:        0,
-    executeDmgPct:         0,
-
-    critChanceAdd:         0,
-    critMultAdd:           0,
-
-    cdReducePct:           0,
-
-    hotAspdAdd:            0,
-    hotCritAdd:            0,
-
-    multiHitChance:        0,
-
-    slowPower:             0,
-    penAdd:                0,
-
-    coreHpAdd:             0,
-    coreDmgMul:            1,
-
-    startCommonAdd:        0,
-    startRareAdd:          0,
-
-    rarityUpChance:        0,
-    rerollRefundChance:    0,
-    specialRefundChance:   0,
-    mythicJackpotChance:   0,
-    bossExtraLegendChance: 0,
-    extraRareChance:       0,
-  };
-
-  for (const node of PASSIVE_NODES) {
-    if (!allocSet.has(node.id) || !node.effect) continue;
-    const e = node.effect;
-
-    switch (e.kind) {
-      // ── Simple ──────────────────────────────────────────────────────────
-      case "DMG_PCT":                  mods.dmgPct               += e.value; break;
-      case "BOSS_DMG_PCT":             mods.bossDmgPct           += e.value; break;
-      case "ELITE_DMG_PCT":            mods.eliteDmgPct          += e.value; break;
-      case "PRESSURE_DMG_PCT":         mods.pressureDmgPct       += e.value; break;
-      case "EXECUTE_DMG_PCT":          mods.executeDmgPct        += e.value; break;
-      case "CRIT_CHANCE_ADD":          mods.critChanceAdd        += e.value; break;
-      case "CRIT_MULT_ADD":            mods.critMultAdd          += e.value; break;
-      case "HOT_ASPD_ADD":             mods.hotAspdAdd           += e.value; break;
-      case "HOT_CRIT_ADD":             mods.hotCritAdd           += e.value; break;
-      case "SLOW_POWER":               mods.slowPower            += e.value; break;
-      case "PEN_ADD":                  mods.penAdd               += e.value; break;
-      case "CORE_HP_ADD":              mods.coreHpAdd            += e.value; break;
-      case "CORE_DMG_MUL":             mods.coreDmgMul           *= (1 - e.value); break;
-      case "START_COMMON_ADD":         mods.startCommonAdd       += e.value; break;
-      case "START_RARE_ADD":           mods.startRareAdd         += e.value; break;
-      case "REROLL_REFUND_CHANCE":     mods.rerollRefundChance   += e.value; break;
-      case "SPECIAL_REFUND_CHANCE":    mods.specialRefundChance  += e.value; break;
-      case "MYTHIC_JACKPOT_CHANCE":    mods.mythicJackpotChance  += e.value; break;
-      case "BOSS_EXTRA_LEGEND_CHANCE": mods.bossExtraLegendChance+= e.value; break;
-      case "EXTRA_RARE_CHANCE":        mods.extraRareChance      += e.value; break;
-      case "RARITY_UP_ADD":            mods.rarityUpChance       += e.value; break;
-      case "MULTI_HIT_CHANCE":         mods.multiHitChance       += e.value; break;
-
-      // ── Compound ────────────────────────────────────────────────────────
-      case "HOT_MASTER":
-        mods.hotAspdAdd  += e.aspd; mods.hotCritAdd    += e.crit; break;
-      case "CRIT_COMBO":
-        mods.critChanceAdd += e.chance; mods.critMultAdd += e.mult; break;
-      case "DMG_BOSS":
-        mods.dmgPct      += e.dmg;  mods.bossDmgPct    += e.boss; break;
-      case "DMG_ASPD":
-        mods.dmgPct      += e.dmg;  mods.hotAspdAdd    += e.aspd; break;
-      case "MULTI_DMG":
-        mods.multiHitChance += e.multi; mods.dmgPct    += e.dmg;  break;
-      case "GAMBLER":
-        mods.rarityUpChance += e.rarity; mods.rerollRefundChance += e.refund; break;
-      case "GOLD_RARE":
-        mods.startRareAdd+= e.rare; mods.rarityUpChance+= e.rarity; break;
-      case "CHAIN_MASTER":
-        mods.bossExtraLegendChance += e.bossLeg; mods.mythicJackpotChance += e.mythic; break;
-      case "SLOW_PEN":
-        mods.slowPower   += e.slow; mods.penAdd        += e.pen;  break;
-      case "CORE_FORTRESS":
-        mods.coreHpAdd   += e.hp;   mods.coreDmgMul   *= (1 - e.dmgReduce); break;
-      case "CDR_HOT":
-        mods.cdReducePct += e.cd;   mods.hotAspdAdd    += e.aspd; break;
-      case "PEN_PRESSURE":
-        mods.penAdd      += e.pen;  mods.pressureDmgPct+= e.pressure; break;
-      case "EXEC_BOSS":
-        mods.executeDmgPct += e.execute; mods.bossDmgPct += e.boss; break;
-      case "BOSS_ELITE":
-        mods.bossDmgPct  += e.boss; mods.eliteDmgPct   += e.elite; break;
-      case "BOSS_DMG_DMG":
-        mods.bossDmgPct  += e.boss; mods.dmgPct        += e.dmg;  break;
-      case "DMG_RARITY":
-        mods.dmgPct      += e.dmg;  mods.rarityUpChance+= e.rarity; break;
-      case "CD_LUCK":
-        mods.cdReducePct += e.cd;   mods.rarityUpChance+= e.rarity; break;
-      case "PEN_CD":
-        mods.penAdd      += e.pen;  mods.cdReducePct   += e.cd;   break;
-      case "DMG_BOSS_COMBO":
-        mods.dmgPct      += e.dmg;  mods.bossDmgPct    += e.boss; break;
-
-      // ── Keystones ───────────────────────────────────────────────────────
-      case "KS_HEAVYBLADE":
-        mods.dmgPct      += e.dmg;  mods.hotAspdAdd    -= e.aspdPenalty; break;
-      case "KS_CRIT":
-        mods.critMultAdd += e.mult; mods.critChanceAdd -= e.chancePenalty; break;
-      case "KS_MULTISHOT":
-        mods.multiHitChance += e.multi; mods.dmgPct    -= e.dmgPenalty; break;
-      case "KS_ASPD":
-        mods.hotAspdAdd  += e.aspd; mods.dmgPct        -= e.dmgPenalty; break;
-      case "KS_BERSERK":
-        mods.dmgPct      += e.dmg;  mods.hotAspdAdd    += e.aspd;
-        mods.coreHpAdd   -= e.corePenalty; break;
-      case "KS_REVERSAL":
-        mods.rarityUpChance += e.rarity; mods.cdReducePct -= e.cdPenalty; break;
-      case "KS_MILLIONAIRE":
-        mods.startRareAdd+= e.rare; mods.startCommonAdd-= e.commonPenalty; break;
-      case "KS_CHAIN":
-        mods.bossExtraLegendChance += e.bossLeg; mods.mythicJackpotChance += e.mythic; break;
-      case "KS_FROST":
-        mods.slowPower   += e.slow; mods.dmgPct        -= e.dmgPenalty; break;
-      case "KS_FORTRESS":
-        mods.coreHpAdd   += e.hp;   mods.dmgPct        -= e.dmgPenalty; break;
-      case "KS_FLASH":
-        mods.cdReducePct += e.cd;   mods.dmgPct        -= e.dmgPenalty; break;
-      case "KS_PEN":
-        mods.penAdd      += e.pen;  mods.dmgPct        -= e.dmgPenalty; break;
-      case "KS_EXECUTE":
-        mods.executeDmgPct += e.execute; mods.dmgPct  -= e.dmgPenalty; break;
-      case "KS_ELITE":
-        mods.eliteDmgPct += e.elite; mods.bossDmgPct  -= e.bossPenalty; break;
-      case "KS_BOSS":
-        mods.bossDmgPct  += e.boss; mods.eliteDmgPct   -= e.elitePenalty; break;
-
-      default: break;
-    }
+function applyEff(mods, eff, lv) {
+  if (!eff || lv <= 0) return;
+  if (eff.kind === "MULTI") { for (const sub of eff.effects) applyEff(mods, sub, lv); return; }
+  const val = eff.value * lv;
+  switch (eff.kind) {
+    case "DMG_PCT":                  mods.dmgPct               += val; break;
+    case "BOSS_DMG_PCT":             mods.bossDmgPct           += val; break;
+    case "ELITE_DMG_PCT":            mods.eliteDmgPct          += val; break;
+    case "PRESSURE_DMG_PCT":         mods.pressureDmgPct       += val; break;
+    case "EXECUTE_DMG_PCT":          mods.executeDmgPct        += val; break;
+    case "CRIT_CHANCE_ADD":          mods.critChanceAdd        += val; break;
+    case "CRIT_MULT_ADD":            mods.critMultAdd          += val; break;
+    case "HOT_ASPD_ADD":             mods.hotAspdAdd           += val; break;
+    case "HOT_CRIT_ADD":             mods.hotCritAdd           += val; break;
+    case "CD_REDUCE_PCT":            mods.cdReducePct          += val; break;
+    case "MULTI_HIT_CHANCE":         mods.multiHitChance       += val; break;
+    case "PEN_ADD":                  mods.penAdd               += val; break;
+    case "CORE_HP_ADD":              mods.coreHpAdd            += val; break;
+    case "START_COMMON_ADD":         mods.startCommonAdd       += val; break;
+    case "START_RARE_ADD":           mods.startRareAdd         += val; break;
+    case "RARITY_UP_ADD":            mods.rarityUpChance       += val; break;
+    case "REROLL_REFUND_CHANCE":     mods.rerollRefundChance   += val; break;
+    case "BOSS_EXTRA_LEGEND_CHANCE": mods.bossExtraLegendChance+= val; break;
+    case "MYTHIC_JACKPOT_CHANCE":    mods.mythicJackpotChance  += val; break;
+    default: break;
   }
+}
 
-  // 상한/하한
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-  mods.cdReducePct           = clamp(mods.cdReducePct,           -0.15, 0.45);
-  mods.critChanceAdd         = clamp(mods.critChanceAdd,         -0.15, 0.30);
-  mods.rarityUpChance        = clamp(mods.rarityUpChance,         0,    0.30);
-  mods.rerollRefundChance    = clamp(mods.rerollRefundChance,     0,    0.30);
-  mods.specialRefundChance   = clamp(mods.specialRefundChance,    0,    0.50);
-  mods.mythicJackpotChance   = clamp(mods.mythicJackpotChance,    0,    0.70);
-  mods.bossExtraLegendChance = clamp(mods.bossExtraLegendChance,  0,    0.80);
-  mods.slowPower             = clamp(mods.slowPower,              0,    0.45);
-  mods.coreDmgMul            = clamp(mods.coreDmgMul,             0.50, 1.0);
-  mods.multiHitChance        = clamp(mods.multiHitChance,         0,    0.60);
-
+export function computeSkillMods(meta) {
+  const mods = {
+    dmgPct:0, bossDmgPct:0, eliteDmgPct:0, pressureDmgPct:0, executeDmgPct:0,
+    critChanceAdd:0, critMultAdd:0,
+    hotAspdAdd:0, hotCritAdd:0,
+    cdReducePct:0,
+    multiHitChance:0,
+    slowPower:0, penAdd:0,
+    coreHpAdd:0, coreDmgMul:1,
+    startCommonAdd:0, startRareAdd:0,
+    rarityUpChance:0, rerollRefundChance:0, specialRefundChance:0,
+    mythicJackpotChance:0, bossExtraLegendChance:0, extraRareChance:0,
+  };
+  const levels = meta.levels ?? {};
+  for (const nd of PASSIVE_NODES) {
+    const lv = levels[nd.id] ?? 0;
+    if (lv > 0) applyEff(mods, nd.eff, lv);
+  }
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+  mods.cdReducePct           = clamp(mods.cdReducePct,          -0.15, 0.50);
+  mods.critChanceAdd         = clamp(mods.critChanceAdd,         0,    0.50);
+  mods.rarityUpChance        = clamp(mods.rarityUpChance,        0,    0.35);
+  mods.multiHitChance        = clamp(mods.multiHitChance,        0,    0.80);
+  mods.bossExtraLegendChance = clamp(mods.bossExtraLegendChance, 0,    0.80);
+  mods.mythicJackpotChance   = clamp(mods.mythicJackpotChance,   0,    0.70);
   return mods;
 }
