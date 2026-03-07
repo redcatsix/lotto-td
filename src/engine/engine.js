@@ -41,7 +41,7 @@ import {
 
 import { clamp, lerp, dist2, distToRectPerimeter, rollItemRarityBestOf, rollOptionsBestOf } from "./combat.js";
 import { hideContextMenus, cycleSpeed, togglePause, toggleVfx, buildKeyboardShortcutHelpHTML } from "../ui/hud.js";
-import { buildShopItems } from "../systems/shop.js";
+import { buildShopItems, buildTowerBuffItems } from "../systems/shop.js";
 
 // --------------------
 // Helpers
@@ -233,6 +233,7 @@ export async function initEngine() {
   const ttSub = document.getElementById("tt-sub");
   const ttStats = document.getElementById("tt-stats");
   const ttOptions = document.getElementById("tt-options");
+  const ttBuffs = document.getElementById("tt-buffs");
   const ttHint = document.getElementById("tt-hint");
 
   const modBtn = document.getElementById("mod-btn");
@@ -906,6 +907,23 @@ export async function initEngine() {
     const pinCount = pins.length;
     const modCost = 1 + pinCount;
     const modLabel = pinCount > 0 ? `개조 (레어${modCost})` : "개조";
+
+    // ── 타워 버프 버튼 렌더링 ──
+    if (ttBuffs) {
+      const BUFF_CUR_COLOR = { common:"#adb5bd", rare:"#ffd43b", legend:"#ff8787" };
+      const BUFF_CUR_LABEL = { common:"⚪", rare:"🟡", legend:"🔴" };
+      const buffItems = buildTowerBuffItems(state);
+      ttBuffs.innerHTML = buffItems.map(it => {
+        const dis = it.enabled ? "" : "disabled";
+        const col = BUFF_CUR_COLOR[it.currency] ?? "#aaa";
+        const lbl = BUFF_CUR_LABEL[it.currency] ?? "";
+        return `<button class="tt-buff-btn tt-buff-btn--${it.currency}" data-shopid="${it.id}" data-cur="${it.currency}" ${dis}>`
+          + `<span class="tt-buff-icon">${it.icon}</span>`
+          + `<span class="tt-buff-name">${safeText(it.title)}</span>`
+          + `<span class="tt-buff-cost" style="color:${col}">${lbl}${it.cost}</span>`
+          + `</button>`;
+      }).join("");
+    }
 
     const typeRerollBtn = document.getElementById("type-reroll-btn");
     modBtn.textContent = pm ? "개조 수락" : modLabel;
@@ -4179,6 +4197,9 @@ ${buildKeyboardShortcutHelpHTML()}
   helpOverlay.addEventListener("pointerdown",(ev)=>{ if(ev.target===helpOverlay) closeHelp(); });
 
   if (shopPanel) shopPanel.addEventListener("click",(ev)=>{ const btn=ev.target.closest("button[data-shopid]"); if(!btn) return; handleShopPurchase(btn.dataset.shopid,btn.dataset.cur); if(state.selectedKey&&state.units.has(state.selectedKey)) buildTooltip(state.units.get(state.selectedKey)); });
+
+  // 타워 버프 버튼 클릭 (tooltip 패널 내 위임)
+  if (tooltip) tooltip.addEventListener("click",(ev)=>{ const btn=ev.target.closest("button[data-shopid]"); if(!btn) return; handleShopPurchase(btn.dataset.shopid,btn.dataset.cur); if(state.selectedKey&&state.units.has(state.selectedKey)) buildTooltip(state.units.get(state.selectedKey)); renderShopPanel(); });
 
   if (skillBtn) skillBtn.addEventListener("click",()=>openSkillTree());
   if (xpBadge) xpBadge.addEventListener("click",()=>openSkillTree());
