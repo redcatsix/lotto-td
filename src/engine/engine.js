@@ -321,6 +321,7 @@ export async function initEngine() {
     canvas.style.width = `${Math.floor(w)}px`;
     canvas.style.height = `${Math.floor(h)}px`;
     resizeCanvasToDisplay();
+    _bgGradLinear = null; _bgGradRadial = null; // 캔버스 크기 변경 시 그라디언트 캐시 무효화
   }
 
   const ro = new ResizeObserver(() => fitCanvasCSS());
@@ -1134,6 +1135,10 @@ export async function initEngine() {
   }
 
   // ---------------- Skill tree (4 trees, level 1-20, rarity) ----------------
+
+  // 배경 그라디언트 캐시 (매 프레임 재생성 방지)
+  let _bgGradLinear = null;
+  let _bgGradRadial = null;
 
   let poeCanvas    = null;
   let poeCtx       = null;
@@ -2644,11 +2649,13 @@ export async function initEngine() {
     ctx.save();
 
     // 배경 오버레이 (보라-파랑 그라데이션, Random Dice 게임보드 분위기)
-    const g = ctx.createLinearGradient(0, 0, logical.w, logical.h);
-    g.addColorStop(0, "rgba(30,10,70,0.07)");
-    g.addColorStop(0.5, "rgba(0,0,0,0)");
-    g.addColorStop(1, "rgba(10,30,70,0.07)");
-    ctx.fillStyle = g; ctx.fillRect(0, 0, logical.w, logical.h);
+    if (!_bgGradLinear) {
+      _bgGradLinear = ctx.createLinearGradient(0, 0, logical.w, logical.h);
+      _bgGradLinear.addColorStop(0, "rgba(30,10,70,0.07)");
+      _bgGradLinear.addColorStop(0.5, "rgba(0,0,0,0)");
+      _bgGradLinear.addColorStop(1, "rgba(10,30,70,0.07)");
+    }
+    ctx.fillStyle = _bgGradLinear; ctx.fillRect(0, 0, logical.w, logical.h);
 
     // 게임보드 격자 (보라빛 톤, 더 게임다운 느낌)
     const step = 40;
@@ -2681,10 +2688,12 @@ export async function initEngine() {
 
     // 비넷 (테두리 어둡게)
     ctx.globalAlpha = 1;
-    const vgn = ctx.createRadialGradient(logical.w/2, logical.h/2, logical.w*0.25, logical.w/2, logical.h/2, logical.w*0.72);
-    vgn.addColorStop(0, "rgba(0,0,0,0)");
-    vgn.addColorStop(1, "rgba(0,0,0,0.25)");
-    ctx.fillStyle = vgn; ctx.fillRect(0, 0, logical.w, logical.h);
+    if (!_bgGradRadial) {
+      _bgGradRadial = ctx.createRadialGradient(logical.w/2, logical.h/2, logical.w*0.25, logical.w/2, logical.h/2, logical.w*0.72);
+      _bgGradRadial.addColorStop(0, "rgba(0,0,0,0)");
+      _bgGradRadial.addColorStop(1, "rgba(0,0,0,0.25)");
+    }
+    ctx.fillStyle = _bgGradRadial; ctx.fillRect(0, 0, logical.w, logical.h);
 
     ctx.restore();
   }
@@ -4028,7 +4037,7 @@ export async function initEngine() {
   }
 
   function render() {
-    resizeCanvasToDisplay(); setLogicalTransform();
+    setLogicalTransform();
     ctx.clearRect(0,0,logical.w,logical.h);
     drawBackground(); drawGrid(); drawPath(); drawCore(); drawSelectedRange(); drawUnits(); drawEnemies(); drawEffects(); drawHUD();
   }
@@ -4254,15 +4263,17 @@ ${buildKeyboardShortcutHelpHTML()}
   syncTopUI();
 
   let last=performance.now();
+  const FRAME_MIN_MS = 1000 / 30; // 30fps 상한 — YouTube 등 병렬 탭에 CPU 여유 제공
 
   function frame(now) {
+    requestAnimationFrame(frame);
+    if (now - last < FRAME_MIN_MS) return;
     const rawDt=Math.min(0.12,(now-last)/1000);
     last=now;
     let dt=rawDt*state.timeScale;
     const maxStep=0.02;
     while (dt>0) { const step=Math.min(maxStep,dt); update(step); dt-=step; }
     render();
-    requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
