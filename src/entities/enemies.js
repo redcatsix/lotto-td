@@ -221,6 +221,11 @@ export function makeEnemy(type, path, round, extra = {}, waveType = WAVE_TYPE.NO
 
     slows: [],
 
+    // D2 스타일 디버프 상태
+    ignite: null,     // { dmgPerTick, t, tick } — 화염 지속피해
+    curseMul: 1.0,    // 저주: 받는 피해 배율
+    curseT: 0,        // 저주 남은 시간
+
     hitFlash: 0,
     ricochetPopupCd: 0,
   };

@@ -322,6 +322,12 @@ export const OPTION_KIND = {
   EXECUTE_PCT: "EXECUTE_PCT",
   PRESSURE_DMG: "PRESSURE_DMG",
   MAXHP_PCT_DMG: "MAXHP_PCT_DMG",
+
+  // D2 스타일 신규 옵션
+  IGNITE: "IGNITE",           // 점화: 화염 지속피해
+  CURSE: "CURSE",             // 저주: 받는 피해 증폭
+  DOUBLE_STRIKE: "DOUBLE_STRIKE", // 연격: 추가 공격 기회
+  PIERCE: "PIERCE",           // 관통: 같은 방향 다중 타격
 };
 
 // Target priority modes (option value)
@@ -376,6 +382,11 @@ export function optionKindName(kind) {
     case OPTION_KIND.PRESSURE_DMG: return "압박 추가피해";
     case OPTION_KIND.MAXHP_PCT_DMG: return "최대체력 비례";
 
+    case OPTION_KIND.IGNITE: return "점화";
+    case OPTION_KIND.CURSE: return "저주";
+    case OPTION_KIND.DOUBLE_STRIKE: return "연격";
+    case OPTION_KIND.PIERCE: return "관통";
+
     default: return "옵션";
   }
 }
@@ -405,6 +416,11 @@ export function optionDescription(kind) {
     case OPTION_KIND.PRESSURE_DMG: return "적이 경로를 더 진행할수록 추가 피해(최대치).";
     case OPTION_KIND.MAXHP_PCT_DMG: return "적 최대체력 비례 추가 피해.";
 
+    case OPTION_KIND.IGNITE: return "적중 시 확률로 화염을 점화. 0.5초마다 추가 피해(타워 공격력 비례).";
+    case OPTION_KIND.CURSE: return "적중 시 확률로 저주 부여. 저주 상태의 적은 모든 피해를 더 받음.";
+    case OPTION_KIND.DOUBLE_STRIKE: return "매 공격마다 확률로 75% 위력의 즉시 추가 공격 발동.";
+    case OPTION_KIND.PIERCE: return "같은 방향(±30°)의 추가 적을 완전 피해로 관통 타격.";
+
     default: return "";
   }
 }
@@ -425,123 +441,75 @@ function optionSlotsByRarity(itemRarity) {
 // 타워 컨셉에 맞는 옵션 풀(중복 X)
 const POOL_BY_TYPE = {
   [UNIT_TYPES.SNIPER]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.EXECUTE_PCT,
-    OPTION_KIND.MAXHP_PCT_DMG,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.EXECUTE_PCT, OPTION_KIND.DOUBLE_STRIKE, OPTION_KIND.CURSE, OPTION_KIND.PIERCE,
   ],
 
   [UNIT_TYPES.GATLING]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.MULTISHOT,
-    OPTION_KIND.PRESSURE_DMG,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.MULTISHOT, OPTION_KIND.PRESSURE_DMG, OPTION_KIND.IGNITE,
   ],
 
   [UNIT_TYPES.BARRAGE]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.MULTISHOT,
-    OPTION_KIND.RICOCHET,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.MULTISHOT, OPTION_KIND.RICOCHET, OPTION_KIND.PIERCE,
   ],
 
   [UNIT_TYPES.SHOTGUN]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.MULTISHOT,
-    OPTION_KIND.EXECUTE_PCT,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.MULTISHOT, OPTION_KIND.EXECUTE_PCT, OPTION_KIND.DOUBLE_STRIKE,
   ],
 
   [UNIT_TYPES.CANNON]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.BLAST_RADIUS,
-    OPTION_KIND.SPLASH_MUL,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.BLAST_RADIUS, OPTION_KIND.SPLASH_MUL,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.IGNITE,
   ],
 
   [UNIT_TYPES.MORTAR]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.BLAST_RADIUS,
-    OPTION_KIND.SPLASH_MUL,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.BLAST_RADIUS, OPTION_KIND.SPLASH_MUL,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.PIERCE, OPTION_KIND.IGNITE,
   ],
 
   [UNIT_TYPES.TESLA]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.RICOCHET,
-    OPTION_KIND.RICOCHET_POWER,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.RICOCHET, OPTION_KIND.RICOCHET_POWER, OPTION_KIND.PIERCE,
   ],
 
   [UNIT_TYPES.PINBALL]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.RICOCHET,
-    OPTION_KIND.RICOCHET_POWER,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.RICOCHET, OPTION_KIND.RICOCHET_POWER,
   ],
 
   [UNIT_TYPES.FROST]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.SLOW_DURATION,
-    OPTION_KIND.SLOW_POWER,
-    OPTION_KIND.RICOCHET,
-    OPTION_KIND.PRESSURE_DMG,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.SLOW_DURATION, OPTION_KIND.SLOW_POWER,
+    OPTION_KIND.RICOCHET, OPTION_KIND.PRESSURE_DMG, OPTION_KIND.CURSE,
   ],
 
   [UNIT_TYPES.EXECUTIONER]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.EXECUTE_PCT,
-    OPTION_KIND.PRESSURE_DMG,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.EXECUTE_PCT, OPTION_KIND.PRESSURE_DMG, OPTION_KIND.DOUBLE_STRIKE, OPTION_KIND.CURSE,
   ],
 
   [UNIT_TYPES.GIANTSLAYER]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.MAXHP_PCT_DMG,
-    OPTION_KIND.EXECUTE_PCT,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.MAXHP_PCT_DMG, OPTION_KIND.EXECUTE_PCT, OPTION_KIND.CURSE, OPTION_KIND.DOUBLE_STRIKE,
   ],
 
   [UNIT_TYPES.BERSERKER]: [
-    OPTION_KIND.DMG_PCT,
-    OPTION_KIND.ASPD_PCT,
-    OPTION_KIND.TARGET_PRIORITY,
-    OPTION_KIND.CRIT_CHANCE,
-    OPTION_KIND.CRIT_MULT,
-    OPTION_KIND.PRESSURE_DMG,
-    OPTION_KIND.EXECUTE_PCT,
+    OPTION_KIND.DMG_PCT, OPTION_KIND.ASPD_PCT, OPTION_KIND.TARGET_PRIORITY,
+    OPTION_KIND.CRIT_CHANCE, OPTION_KIND.CRIT_MULT,
+    OPTION_KIND.PRESSURE_DMG, OPTION_KIND.EXECUTE_PCT, OPTION_KIND.IGNITE,
   ],
 };
 
@@ -624,22 +592,22 @@ function valueByRarity(kind, r) {
   switch (kind) {
     case OPTION_KIND.DMG_PCT:
       return pick({
-        [R.NORMAL]: [0.08, 0.12],
-        [R.MAGIC]: [0.13, 0.20],
-        [R.RARE]: [0.21, 0.30],
-        [R.LEGENDARY]: [0.31, 0.45],
-        [R.UNIQUE]: [0.46, 0.65],
-        [R.MYTHIC]: [0.66, 1.00],
+        [R.NORMAL]: [0.06, 0.15],
+        [R.MAGIC]: [0.10, 0.22],
+        [R.RARE]: [0.18, 0.35],
+        [R.LEGENDARY]: [0.28, 0.55],
+        [R.UNIQUE]: [0.40, 0.75],
+        [R.MYTHIC]: [0.70, 1.20],
       });
 
     case OPTION_KIND.ASPD_PCT:
       return pick({
-        [R.NORMAL]: [0.05, 0.08],
-        [R.MAGIC]: [0.09, 0.13],
-        [R.RARE]: [0.14, 0.18],
-        [R.LEGENDARY]: [0.19, 0.25],
-        [R.UNIQUE]: [0.26, 0.32],
-        [R.MYTHIC]: [0.33, 0.45],
+        [R.NORMAL]: [0.04, 0.10],
+        [R.MAGIC]: [0.08, 0.16],
+        [R.RARE]: [0.12, 0.22],
+        [R.LEGENDARY]: [0.18, 0.30],
+        [R.UNIQUE]: [0.24, 0.40],
+        [R.MYTHIC]: [0.35, 0.55],
       });
 
     case OPTION_KIND.TARGET_PRIORITY: {
@@ -660,22 +628,22 @@ function valueByRarity(kind, r) {
 
     case OPTION_KIND.CRIT_CHANCE:
       return pick({
-        [R.NORMAL]: [0.03, 0.05],
-        [R.MAGIC]: [0.06, 0.09],
-        [R.RARE]: [0.10, 0.14],
-        [R.LEGENDARY]: [0.16, 0.22],
-        [R.UNIQUE]: [0.24, 0.32],
-        [R.MYTHIC]: [0.35, 0.60],
+        [R.NORMAL]: [0.02, 0.07],
+        [R.MAGIC]: [0.04, 0.12],
+        [R.RARE]: [0.08, 0.18],
+        [R.LEGENDARY]: [0.14, 0.28],
+        [R.UNIQUE]: [0.22, 0.42],
+        [R.MYTHIC]: [0.38, 0.70],
       });
 
     case OPTION_KIND.CRIT_MULT:
       return pick({
-        [R.NORMAL]: [0.15, 0.25],
-        [R.MAGIC]: [0.25, 0.40],
-        [R.RARE]: [0.40, 0.60],
-        [R.LEGENDARY]: [0.60, 0.90],
-        [R.UNIQUE]: [0.90, 1.20],
-        [R.MYTHIC]: [1.20, 2.00],
+        [R.NORMAL]: [0.10, 0.30],
+        [R.MAGIC]: [0.20, 0.50],
+        [R.RARE]: [0.35, 0.70],
+        [R.LEGENDARY]: [0.55, 1.10],
+        [R.UNIQUE]: [0.85, 1.50],
+        [R.MYTHIC]: [1.30, 2.50],
       });
 
     case OPTION_KIND.MULTISHOT:
@@ -685,7 +653,7 @@ function valueByRarity(kind, r) {
         [R.RARE]: [2, 3],
         [R.LEGENDARY]: [3, 4],
         [R.UNIQUE]: [4, 6],
-        [R.MYTHIC]: [7, 10],
+        [R.MYTHIC]: [7, 12],
       }, true);
 
     case OPTION_KIND.RICOCHET:
@@ -695,7 +663,7 @@ function valueByRarity(kind, r) {
         [R.RARE]: [2, 3],
         [R.LEGENDARY]: [3, 4],
         [R.UNIQUE]: [4, 6],
-        [R.MYTHIC]: [6, 10],
+        [R.MYTHIC]: [6, 12],
       }, true);
 
     case OPTION_KIND.RICOCHET_POWER:
@@ -752,34 +720,84 @@ function valueByRarity(kind, r) {
 
     case OPTION_KIND.EXECUTE_PCT:
       return pick({
-        [R.NORMAL]: [0.10, 0.16],
-        [R.MAGIC]: [0.17, 0.24],
-        [R.RARE]: [0.25, 0.36],
-        [R.LEGENDARY]: [0.37, 0.52],
-        [R.UNIQUE]: [0.53, 0.75],
-        [R.MYTHIC]: [0.76, 1.20],
+        [R.NORMAL]: [0.08, 0.18],
+        [R.MAGIC]: [0.14, 0.28],
+        [R.RARE]: [0.22, 0.40],
+        [R.LEGENDARY]: [0.34, 0.60],
+        [R.UNIQUE]: [0.50, 0.85],
+        [R.MYTHIC]: [0.80, 1.50],
       });
 
     case OPTION_KIND.PRESSURE_DMG:
       // 진행도 비례 추가피해 (최대치). 실제 적용은 엔진에서 progress(0~1)에 비례.
       return pick({
-        [R.NORMAL]: [0.06, 0.10],
-        [R.MAGIC]: [0.11, 0.15],
-        [R.RARE]: [0.16, 0.22],
-        [R.LEGENDARY]: [0.23, 0.32],
-        [R.UNIQUE]: [0.33, 0.45],
-        [R.MYTHIC]: [0.46, 0.65],
+        [R.NORMAL]: [0.05, 0.12],
+        [R.MAGIC]: [0.10, 0.18],
+        [R.RARE]: [0.14, 0.26],
+        [R.LEGENDARY]: [0.22, 0.38],
+        [R.UNIQUE]: [0.32, 0.52],
+        [R.MYTHIC]: [0.50, 0.80],
       });
 
     case OPTION_KIND.MAXHP_PCT_DMG:
       return pick({
-        [R.NORMAL]: [0.003, 0.006],
-        [R.MAGIC]: [0.007, 0.010],
-        [R.RARE]: [0.011, 0.016],
-        [R.LEGENDARY]: [0.017, 0.024],
-        [R.UNIQUE]: [0.025, 0.038],
-        [R.MYTHIC]: [0.039, 0.070],
+        [R.NORMAL]: [0.003, 0.007],
+        [R.MAGIC]: [0.006, 0.012],
+        [R.RARE]: [0.010, 0.018],
+        [R.LEGENDARY]: [0.016, 0.028],
+        [R.UNIQUE]: [0.025, 0.045],
+        [R.MYTHIC]: [0.040, 0.090],
       });
+
+    // ── 신규 D2 스타일 옵션 ─────────────────────────────────
+
+    case OPTION_KIND.IGNITE: {
+      // value = [chance, dmgRatio] — 배열로 저장
+      const tbl = {
+        [R.NORMAL]:    { c:[0.05,0.08], d:[0.02,0.04] },
+        [R.MAGIC]:     { c:[0.09,0.13], d:[0.05,0.08] },
+        [R.RARE]:      { c:[0.14,0.20], d:[0.09,0.14] },
+        [R.LEGENDARY]: { c:[0.21,0.30], d:[0.15,0.22] },
+        [R.UNIQUE]:    { c:[0.31,0.45], d:[0.23,0.35] },
+        [R.MYTHIC]:    { c:[0.46,0.70], d:[0.36,0.55] },
+      };
+      const t = tbl[r] ?? tbl[R.NORMAL];
+      return [rand(t.c[0], t.c[1]), rand(t.d[0], t.d[1])];
+    }
+
+    case OPTION_KIND.CURSE: {
+      // value = [chance, ampMul] — 배열
+      const tbl = {
+        [R.NORMAL]:    { c:[0.05,0.08], a:[0.10,0.15] },
+        [R.MAGIC]:     { c:[0.09,0.14], a:[0.16,0.22] },
+        [R.RARE]:      { c:[0.15,0.22], a:[0.23,0.32] },
+        [R.LEGENDARY]: { c:[0.23,0.33], a:[0.33,0.45] },
+        [R.UNIQUE]:    { c:[0.34,0.48], a:[0.46,0.65] },
+        [R.MYTHIC]:    { c:[0.49,0.70], a:[0.66,1.00] },
+      };
+      const t = tbl[r] ?? tbl[R.NORMAL];
+      return [rand(t.c[0], t.c[1]), rand(t.a[0], t.a[1])];
+    }
+
+    case OPTION_KIND.DOUBLE_STRIKE:
+      return pick({
+        [R.NORMAL]:    [0.05, 0.08],
+        [R.MAGIC]:     [0.09, 0.14],
+        [R.RARE]:      [0.15, 0.22],
+        [R.LEGENDARY]: [0.23, 0.33],
+        [R.UNIQUE]:    [0.34, 0.48],
+        [R.MYTHIC]:    [0.49, 0.70],
+      });
+
+    case OPTION_KIND.PIERCE:
+      return pick({
+        [R.NORMAL]:    [1, 1],
+        [R.MAGIC]:     [1, 2],
+        [R.RARE]:      [2, 2],
+        [R.LEGENDARY]: [2, 3],
+        [R.UNIQUE]:    [3, 4],
+        [R.MYTHIC]:    [4, 5],
+      }, true);
 
     default:
       return 0;
@@ -841,44 +859,68 @@ if (remain.length < slots) {
   return options;
 }
 
+// D2 스타일 등급 접두사 — rarityName 대신 사용
+const OPTION_AFFIX_PREFIX = {
+  [ITEM_RARITY.NORMAL]:    "날카로운",
+  [ITEM_RARITY.MAGIC]:     "강화된",
+  [ITEM_RARITY.RARE]:      "잔혹한",
+  [ITEM_RARITY.LEGENDARY]: "파멸의",
+  [ITEM_RARITY.UNIQUE]:    "신성한",
+  [ITEM_RARITY.MYTHIC]:    "절대자의",
+};
+
 export function formatOption(opt) {
-  const rn = rarityName(opt.rarity);
+  const prefix = OPTION_AFFIX_PREFIX[opt.rarity] ?? rarityName(opt.rarity);
   const k = opt.kind;
   const v = opt.value;
 
   // int
-  if (k === OPTION_KIND.MULTISHOT || k === OPTION_KIND.RICOCHET) {
-    return `[${rn}] ${optionKindName(k)} +${v}`;
+  if (k === OPTION_KIND.MULTISHOT || k === OPTION_KIND.RICOCHET || k === OPTION_KIND.PIERCE) {
+    return `${prefix} ${optionKindName(k)} +${v}`;
   }
 
   // sec
   if (k === OPTION_KIND.SLOW_DURATION) {
-    return `[${rn}] ${optionKindName(k)} +${v.toFixed(1)}초`;
+    return `${prefix} ${optionKindName(k)} +${v.toFixed(1)}초`;
   }
 
   // target priority
   if (k === OPTION_KIND.TARGET_PRIORITY) {
-    return `[${rn}] ${optionKindName(k)}: ${targetPriorityName(v)}`;
+    return `${prefix} ${optionKindName(k)}: ${targetPriorityName(v)}`;
   }
 
   // cells
   if (k === OPTION_KIND.BLAST_RADIUS) {
-    return `[${rn}] ${optionKindName(k)} +${v.toFixed(1)}칸`;
+    return `${prefix} ${optionKindName(k)} +${v.toFixed(1)}칸`;
   }
 
-  // ricochet power
-  if (k === OPTION_KIND.RICOCHET_POWER) {
-    return `[${rn}] ${optionKindName(k)} +${Math.round(v * 100)}%`;
-  }
-
-  // slow power
-  if (k === OPTION_KIND.SLOW_POWER) {
-    return `[${rn}] ${optionKindName(k)} +${Math.round(v * 100)}%`;
+  // ricochet power / slow power
+  if (k === OPTION_KIND.RICOCHET_POWER || k === OPTION_KIND.SLOW_POWER) {
+    return `${prefix} ${optionKindName(k)} +${Math.round(v * 100)}%`;
   }
 
   // pressure dmg (max)
   if (k === OPTION_KIND.PRESSURE_DMG) {
-    return `[${rn}] ${optionKindName(k)} 최대 +${Math.round(v * 100)}%`;
+    return `${prefix} ${optionKindName(k)} 최대 +${Math.round(v * 100)}%`;
+  }
+
+  // IGNITE: value[0]=확률, value[1]=틱당비율
+  if (k === OPTION_KIND.IGNITE) {
+    const chance = Math.round(v[0] * 100);
+    const dps = Math.round(v[1] * 100);
+    return `${prefix} ${optionKindName(k)} ${chance}% (틱당 ${dps}%)`;
+  }
+
+  // CURSE: value[0]=확률, value[1]=피해증폭
+  if (k === OPTION_KIND.CURSE) {
+    const chance = Math.round(v[0] * 100);
+    const amp = Math.round(v[1] * 100);
+    return `${prefix} ${optionKindName(k)} ${chance}% (+${amp}% 피해증폭)`;
+  }
+
+  // DOUBLE_STRIKE
+  if (k === OPTION_KIND.DOUBLE_STRIKE) {
+    return `${prefix} ${optionKindName(k)} ${Math.round(v * 100)}%`;
   }
 
   // %
@@ -890,15 +932,15 @@ export function formatOption(opt) {
     k === OPTION_KIND.EXECUTE_PCT ||
     k === OPTION_KIND.MAXHP_PCT_DMG
   ) {
-    return `[${rn}] ${optionKindName(k)} +${Math.round(v * 100)}%`;
+    return `${prefix} ${optionKindName(k)} +${Math.round(v * 100)}%`;
   }
 
   // crit mult
   if (k === OPTION_KIND.CRIT_MULT) {
-    return `[${rn}] ${optionKindName(k)} +${v.toFixed(2)}배`;
+    return `${prefix} ${optionKindName(k)} +${v.toFixed(2)}배`;
   }
 
-  return `[${rn}] ${optionKindName(k)}`;
+  return `${prefix} ${optionKindName(k)}`;
 }
 
 export function createUnit(unitType, itemRarity, options, cell, pxPerCell) {
@@ -958,6 +1000,14 @@ export function createUnit(unitType, itemRarity, options, cell, pxPerCell) {
   let pressureDmg = def.basePressureDmg ?? 0;
   let maxHpPctDmg = def.baseMaxHpPctDmg ?? 0;
 
+  // 신규 D2 스타일 옵션 스탯
+  let igniteChance = 0;
+  let igniteDmgRatio = 0;
+  let curseChance = 0;
+  let curseDmgMul = 0;
+  let doubleStrikeChance = 0;
+  let pierce = 0;
+
   // apply options
   for (const opt of options) {
     switch (opt.kind) {
@@ -1014,6 +1064,24 @@ export function createUnit(unitType, itemRarity, options, cell, pxPerCell) {
         maxHpPctDmg += opt.value;
         break;
 
+      // 신규 D2 스타일 옵션
+      case OPTION_KIND.IGNITE:
+        // value = [chance, dmgRatio]
+        igniteChance = Math.max(igniteChance, opt.value[0]);
+        igniteDmgRatio = Math.max(igniteDmgRatio, opt.value[1]);
+        break;
+      case OPTION_KIND.CURSE:
+        // value = [chance, ampMul]
+        curseChance = Math.max(curseChance, opt.value[0]);
+        curseDmgMul = Math.max(curseDmgMul, opt.value[1]);
+        break;
+      case OPTION_KIND.DOUBLE_STRIKE:
+        doubleStrikeChance += opt.value;
+        break;
+      case OPTION_KIND.PIERCE:
+        pierce += opt.value;
+        break;
+
       default:
         break;
     }
@@ -1047,6 +1115,13 @@ export function createUnit(unitType, itemRarity, options, cell, pxPerCell) {
   executeBonus = clamp(executeBonus, 0, 3.0);
   pressureDmg = clamp(pressureDmg, 0, 2.0);
   maxHpPctDmg = clamp(maxHpPctDmg, 0, 0.25);
+
+  igniteChance = clamp(igniteChance, 0, 0.80);
+  igniteDmgRatio = clamp(igniteDmgRatio, 0, 1.0);
+  curseChance = clamp(curseChance, 0, 0.80);
+  curseDmgMul = clamp(curseDmgMul, 0, 1.50);
+  doubleStrikeChance = clamp(doubleStrikeChance, 0, 0.80);
+  pierce = clampInt(pierce, 0, 10);
 
   // -----------------
   // High-tier fire gap: Magazine / Overheat
@@ -1140,6 +1215,14 @@ export function createUnit(unitType, itemRarity, options, cell, pxPerCell) {
     executeBonus,
     pressureDmg,
     maxHpPctDmg,
+
+    // 신규 D2 스타일 옵션
+    igniteChance,
+    igniteDmgRatio,
+    curseChance,
+    curseDmgMul,
+    doubleStrikeChance,
+    pierce,
 
     // magazine / overheat
     magSize,
