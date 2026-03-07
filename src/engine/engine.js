@@ -1779,7 +1779,6 @@ export async function initEngine() {
     } else if (wt !== WAVE_TYPE.NORMAL && winfo) {
       state.msg = { text: `${winfo.name.toUpperCase()} WAVE! ${stage}`, t: 1.4 };
       // 웨이브 시작 시 화면 흔들기 (특수 웨이브 강조)
-      triggerScreenShake(0.22, 0.18, 10);
     } else {
       state.msg = { text: `ROUND ${stage}`, t: 1.4 };
     }
@@ -1874,6 +1873,28 @@ export async function initEngine() {
     // 핀 초기화 (새 옵션 세트 적용 후)
     u.pinnedOptionIdxs = [];
     applyMetaToUnit(u);
+    // 구매한 업그레이드 플래그 및 보너스 복원
+    if (prev._aspdBuyCount) {
+      u._aspdBuyCount = prev._aspdBuyCount;
+      u.cooldown = Math.max(u.cooldownFloor ?? 0.22, u.cooldown * Math.pow(0.88, prev._aspdBuyCount));
+    }
+    if (prev._powerBuyCount) {
+      u._powerBuyCount = prev._powerBuyCount;
+      u.damage = Math.max(1, Math.round(u.damage * Math.pow(1.10, prev._powerBuyCount)));
+    }
+    if (prev._forgeBuyCount) {
+      u._forgeBuyCount = prev._forgeBuyCount;
+      u.damage = Math.max(1, Math.round(u.damage * Math.pow(1.15, prev._forgeBuyCount)));
+    }
+    if (prev._critAmpCount) {
+      u._critAmpCount = prev._critAmpCount;
+      u.critMult = (u.critMult ?? 2.0) + 0.40 * prev._critAmpCount;
+    }
+    if (prev._legendAwaken) {
+      u._legendAwaken = true;
+      u.damage = Math.max(1, Math.round(u.damage * 1.25));
+      u.critChance = Math.min(0.95, (u.critChance ?? 0.05) + 0.06);
+    }
     u.cd = Math.min(prev.cd, u.cooldown);
     state.units.set(key, u);
     recordBestRoll(u.type, u.itemRarity);
@@ -2238,7 +2259,7 @@ export async function initEngine() {
     const isNum=/^\d+$/.test(String(text));
     const dmgCrit = !!crit && isNum;
     const life = dmgCrit?0.95:0.85;
-    if (state.floaters.length < 40) state.floaters.push({ x,y,text,t:life,life,vy:dmgCrit?-52:-38,size:dmgCrit?24:16,color,crit,shake:dmgCrit,seed:Math.random()*1000 });
+    if (state.floaters.length < 40) state.floaters.push({ x,y,text,t:life,life,vy:dmgCrit?-52:-38,size:dmgCrit?24:16,color,crit,seed:Math.random()*1000 });
   }
 
   function densityScoreAt(candidate, all, r2) {
@@ -2417,9 +2438,7 @@ export async function initEngine() {
         // 보스 킬: 추가 골드 파티클 버스트
         addPuff(en.x,en.y,"rgba(255,212,59,0.90)",1.8);
         addHitRing(en.x,en.y,"rgba(255,212,59,0.70)",true);
-        state.msg={text:"BOSS DOWN!",t:1.1}; triggerScreenShake(0.75,0.30,22);
-      } else if (en.type===ENEMY_TYPES.ELITE) {
-        triggerScreenShake(0.20,0.12,8);
+        state.msg={text:"BOSS DOWN!",t:1.1};
       }
     }
     state.enemies=alive;
@@ -2476,7 +2495,6 @@ export async function initEngine() {
       if (u.overheatT>0) { u.cd=0.05; continue; }
       if (u.magSize>0&&u.magAmmo<=0) { u.reloadT=u.reloadTime; u.cd=0.05; continue; }
       const targets=smartTargetsForUnit(u,inRange,shotCount);
-      if (targets.length>0&&u.itemRarity===ITEM_RARITY.MYTHIC) triggerScreenShake(0.16,0.20,12);
       const critChanceMul=u.auraOn?(u.auraCritChanceMul??1.0):1.0;
       for (const en of targets) {
         const hit=calcDamage(u,en,{critAdd:mods.critAdd,dmgMul:mods.dmgMul,critChanceMul});
@@ -2620,13 +2638,6 @@ export async function initEngine() {
   function setLogicalTransform() {
     const sx=canvas.width/logical.w, sy=canvas.height/logical.h;
     ctx.setTransform(sx,0,0,sy,0,0);
-    const s=state.screenShake;
-    if (s&&state.vfxEnabled&&(s.t||0)>0) {
-      const p=clamp((s.t||0)/Math.max(0.0001,s.life||s.t),0,1);
-      const amp=(p*p)*(s.strength||0)*(s.maxOffset||12);
-      const now=perfNow()/1000;
-      ctx.translate(Math.sin(now*47+(s.seed||0))*amp, Math.sin(now*53+(s.seed||0)*1.7)*amp);
-    }
   }
 
   function drawBackground() {
@@ -3761,7 +3772,6 @@ export async function initEngine() {
       const life=f.life||0.85; const a=clamp(f.t/life,0,1); const p=clamp((life-f.t)/life,0,1);
       const popDur=0.12; const popT=clamp((life-f.t)/popDur,0,1); const popScale=1+(1-popT)*(f.crit?0.60:0.25);
       let dx=0,dy=0;
-      if (f.shake) { const j=(1-p)*3.5; dx=Math.sin(nowS*45+(f.seed||0))*j; dy=Math.cos(nowS*38+(f.seed||0)*1.7)*j; }
       ctx.save(); ctx.globalAlpha=a*DMG_FLOATERS_INTENSITY; ctx.translate(f.x+dx,f.y+dy); ctx.scale(popScale,popScale);
       ctx.font=`${f.crit?900:800} ${f.size}px ui-sans-serif, system-ui`; ctx.textAlign="center"; ctx.textBaseline="middle";
       // 크릿: 황금색 + 두꺼운 검정 아웃라인
