@@ -322,23 +322,62 @@ hr{border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;}
 
 .badge.xp{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.90);}
 
-.skill-modal{width:min(980px,calc(100vw - 32px));}
+.skill-modal{width:min(1060px,calc(100vw - 24px));}
 .skill-modal .modal-header{justify-content:flex-start;}
+.skill-modal-body{padding:0 !important;overflow:hidden;}
 .skill-xp{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.90);margin-left:auto;margin-right:10px;}
-.skill-layout{display:flex;gap:12px;}
-.skill-tree-wrap{position:relative;flex:1;min-height:560px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:rgba(10,16,30,0.90);overflow:hidden;}
+
+/* ── Tree wrap: full canvas, no side panel ── */
+.skill-tree-wrap{
+  position:relative;
+  width:100%;
+  height:min(72vh, 660px);
+  border-radius:0 0 16px 16px;
+  background:#080c18;
+  overflow:hidden;
+  cursor:grab;
+}
+.skill-tree-wrap:active{cursor:grabbing;}
 .poe-tree-canvas{display:block;width:100%;height:100%;}
 
-.skill-detail{width:min(320px,40vw);border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);padding:12px;overflow:auto;}
-.skill-detail .big{font-size:18px;font-weight:950;margin-bottom:4px;}
-.skill-detail .desc{font-size:12px;color:rgba(255,255,255,0.78);white-space:pre-line;}
-.skill-detail .meta{margin-top:10px;font-size:12px;color:rgba(255,255,255,0.78);}
-.skill-detail .btnrow{display:flex;gap:8px;margin-top:10px;}
+/* ── Floating node info panel ── */
+.skill-node-panel{
+  position:absolute;
+  bottom:16px;
+  right:16px;
+  width:min(290px,calc(100vw - 48px));
+  background:rgba(8,12,26,0.96);
+  border:1px solid rgba(255,255,255,0.18);
+  border-radius:14px;
+  padding:14px 16px 12px;
+  z-index:20;
+  backdrop-filter:blur(12px);
+  box-shadow:0 8px 32px rgba(0,0,0,0.60);
+  animation:snpFadeIn 0.15s ease;
+}
+@keyframes snpFadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
-@media (max-width:860px){
-  .skill-layout{flex-direction:column;}
-  .skill-detail{width:100%;}
-  .skill-tree-wrap{min-height:420px;}
+.skill-node-panel.hidden{display:none;}
+
+.snp-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.snp-glyph{font-size:22px;line-height:1;flex-shrink:0;}
+.snp-title{font-size:16px;font-weight:900;letter-spacing:0.1px;flex:1;line-height:1.2;}
+.snp-close-btn{background:none;border:none;color:rgba(255,255,255,0.40);font-size:13px;cursor:pointer;
+  padding:2px 4px;border-radius:4px;transition:color 0.12s,background 0.12s;flex-shrink:0;}
+.snp-close-btn:hover{color:rgba(255,255,255,0.90);background:rgba(255,255,255,0.10);}
+.snp-type{font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:8px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;}
+.snp-desc{font-size:12px;color:rgba(255,255,255,0.80);white-space:pre-line;line-height:1.5;margin-bottom:8px;}
+.snp-status{font-size:12px;font-weight:700;margin-bottom:4px;}
+.snp-refund-hint{font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:4px;}
+.snp-xp{font-size:11px;color:rgba(255,255,255,0.50);margin-bottom:10px;}
+.snp-btnrow{display:flex;gap:7px;}
+.snp-btnrow button{flex:1;font-size:12px;font-weight:700;padding:7px 0;border-radius:8px;}
+.snp-refund{background:rgba(255,212,59,0.12) !important;border-color:rgba(255,212,59,0.35) !important;color:#ffd43b !important;}
+.snp-refund:not(:disabled):hover{background:rgba(255,212,59,0.22) !important;}
+
+@media (max-width:760px){
+  .skill-tree-wrap{height:min(60vh,480px);}
+  .skill-node-panel{width:calc(100% - 32px);left:16px;right:16px;bottom:12px;}
 }
 
 .badge.clickable{cursor:pointer;user-select:none;}

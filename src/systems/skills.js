@@ -1,8 +1,8 @@
-// Lotto TD - POE-style Passive Skill Tree (v2)
-// 방대한 패시브 노드 그래프 시스템
+// Lotto TD - POE-style Passive Skill Tree (v3)
+// 완전 개편: 방사형 15 키스톤 + 65 노드
 
-export const META_STORAGE_KEY = "lotto_td_meta_v2";
-export const META_VERSION = 2;
+export const META_STORAGE_KEY = "lotto_td_meta_v3";
+export const META_VERSION = 3;
 
 export const NODE_TYPE = {
   START:    "start",
@@ -13,490 +13,242 @@ export const NODE_TYPE = {
 
 export const NODE_REGION = {
   CENTER: "CENTER",
-  CTL:    "CTL",
-  OFF:    "OFF",
-  GMB:    "GMB",
+  ATK:    "ATK",   // 빨강: 공격/속도
+  LUCK:   "LUCK",  // 금색: 행운/도박
+  DEF:    "DEF",   // 파랑: 방어/제어
+  HUNT:   "HUNT",  // 보라: 사냥/관통
 };
 
-// XP cost per node type
 export const NODE_COST = {
   start:    0,
-  regular:  30,
-  notable:  75,
-  keystone: 200,
+  regular:  25,
+  notable:  65,
+  keystone: 175,
 };
 
-// Canvas rendering constants
-export const TREE_W = 700;
-export const TREE_H = 700;
+export const TREE_W = 1800;
+export const TREE_H = 1800;
 
-// Region colors
 export const REGION_COLOR = {
   CENTER: "#ffffff",
-  CTL:    "#74c0fc",
-  OFF:    "#ff6b6b",
-  GMB:    "#ffd43b",
+  ATK:    "#ff6b6b",
+  LUCK:   "#ffd43b",
+  DEF:    "#74c0fc",
+  HUNT:   "#cc5de8",
 };
 
-function p(x, y) { return { x: Math.round(x), y: Math.round(y) }; }
+const CX = 900, CY = 900;
 
-// ─── Node definitions ───────────────────────────────────────────────────────
-// 좌표계: 700×700 캔버스, center = (350, 360)
-// 연결(connections): 인접 노드 ID 목록. 할당된 이웃 노드가 있으면 활성화 가능.
+function bp(angleDeg, r) {
+  // angle 0 = top, clockwise
+  const rad = angleDeg * Math.PI / 180;
+  return { x: Math.round(CX + r * Math.sin(rad)), y: Math.round(CY - r * Math.cos(rad)) };
+}
+
+function getRegionGlyph(region) {
+  switch (region) {
+    case NODE_REGION.ATK:  return "◈";
+    case NODE_REGION.LUCK: return "◇";
+    case NODE_REGION.DEF:  return "◫";
+    case NODE_REGION.HUNT: return "◆";
+    default: return "·";
+  }
+}
 
 function buildNodes() {
   const nodes = [];
-  function add(id, pos, type, name, desc, effect, conns, region) {
-    nodes.push({ id, x: pos.x, y: pos.y, type, name, desc, effect, connections: conns, region });
+  function add(id, pos, type, name, desc, effect, conns, region, glyph) {
+    nodes.push({ id, x: pos.x, y: pos.y, type, name, desc, effect,
+      connections: conns, region, glyph: glyph || "·" });
   }
 
-  // ── CENTER ──────────────────────────────────────────────────────────────
-  add("start",
-    p(350, 360), NODE_TYPE.START,
-    "시작점", "패시브 트리의 중심. 항상 활성화됩니다.",
-    null,
-    ["ctl_gate", "off_gate", "gmb_gate"],
-    NODE_REGION.CENTER);
+  const N = 15;
+  const R_GATE  = 215;
+  const R_NOT   = 390;
+  const R_PREKS = 515;
+  const R_KS    = 635;
 
-  add("ctl_gate",
-    p(350, 272), NODE_TYPE.REGULAR,
-    "제어의 문", "쿨다운 -1.5%",
-    { kind: "CD_REDUCE_PCT", value: 0.015 },
-    ["start", "ctl_t1", "ctl_l1", "ctl_r1", "ctl_x1", "ctl_x2"],
-    NODE_REGION.CTL);
+  // ── START ────────────────────────────────────────────────────────────────
+  const allGates = Array.from({ length: N }, (_, i) => `g${i}`);
+  add("start", { x: CX, y: CY }, NODE_TYPE.START,
+    "시작점", "패시브 트리의 중심.\n모든 경로의 시작점입니다.",
+    null, allGates, NODE_REGION.CENTER, "◉");
 
-  add("off_gate",
-    p(279, 422), NODE_TYPE.REGULAR,
-    "파괴의 문", "공격력 +1.5%",
-    { kind: "DMG_PCT", value: 0.015 },
-    ["start", "off_t1", "off_l1", "off_r1", "off_x1", "off_x2"],
-    NODE_REGION.OFF);
+  // ── BRANCH DEFINITIONS ───────────────────────────────────────────────────
+  // Each branch: angle, key, region, ks, not, preks, gate
+  const branchDefs = [
+    // 0: 0° (top) ─ 공격력
+    { angle:   0, key:"dmg",   region: NODE_REGION.ATK,
+      ks:    { name:"파괴의 망치",     desc:"공격력 +35%\n부작용: HOT 공속 -10%",       effect:{ kind:"KS_HEAVYBLADE", dmg:0.35, aspdPenalty:0.10 }, glyph:"⚔" },
+      not:   { name:"화력 집중",       desc:"공격력 +6% · 보스 피해 +3%",               effect:{ kind:"DMG_BOSS",       dmg:0.06, boss:0.03 },        glyph:"⚔" },
+      preks: { name:"폭발적 화력",     desc:"공격력 +2.5%",                             effect:{ kind:"DMG_PCT",        value:0.025 } },
+      gate:  { name:"화력 기초",       desc:"공격력 +2%",                               effect:{ kind:"DMG_PCT",        value:0.02  } } },
 
-  add("gmb_gate",
-    p(421, 422), NODE_TYPE.REGULAR,
-    "도박의 문", "일반 티켓 +1",
-    { kind: "START_COMMON_ADD", value: 1 },
-    ["start", "gmb_t1", "gmb_l1", "gmb_r1", "gmb_x1", "gmb_x2"],
-    NODE_REGION.GMB);
+    // 1: 24° ─ 크리티컬
+    { angle:  24, key:"crit",  region: NODE_REGION.ATK,
+      ks:    { name:"크리티컬 폭발",   desc:"치명 배율 +0.50\n부작용: 치명 확률 -12%",  effect:{ kind:"KS_CRIT",        mult:0.50, chancePenalty:0.12 }, glyph:"✦" },
+      not:   { name:"치명 마스터",     desc:"치명 확률 +2% · 배율 +0.10",              effect:{ kind:"CRIT_COMBO",     chance:0.02, mult:0.10 },        glyph:"✦" },
+      preks: { name:"치명 집중",       desc:"치명 배율 +0.06",                          effect:{ kind:"CRIT_MULT_ADD",  value:0.06 } },
+      gate:  { name:"급소 타격",       desc:"치명타 확률 +1%",                          effect:{ kind:"CRIT_CHANCE_ADD",value:0.01 } } },
 
-  // ── CONTROL REGION (상단, 파랑) ─────────────────────────────────────────
-  // 중앙 HOT/쿨다운 주간선
-  add("ctl_t1",
-    p(350, 222), NODE_TYPE.REGULAR,
-    "자동 서보", "쿨다운 -1.5%",
-    { kind: "CD_REDUCE_PCT", value: 0.015 },
-    ["ctl_gate", "ctl_t2", "ctl_x1", "ctl_x2"],
-    NODE_REGION.CTL);
+    // 2: 48° ─ 다중연사
+    { angle:  48, key:"multi", region: NODE_REGION.ATK,
+      ks:    { name:"다중 연사",       desc:"다중공격 확률 +35%\n부작용: 공격력 -15%",   effect:{ kind:"KS_MULTISHOT",   multi:0.35, dmgPenalty:0.15 }, glyph:"⁂" },
+      not:   { name:"연속 사격",       desc:"다중공격 확률 +10% · 공격력 +2%",          effect:{ kind:"MULTI_DMG",      multi:0.10, dmg:0.02 },         glyph:"⁂" },
+      preks: { name:"사격 집중",       desc:"다중공격 확률 +6%",                        effect:{ kind:"MULTI_HIT_CHANCE",value:0.06 } },
+      gate:  { name:"연속 준비",       desc:"다중공격 확률 +4%",                        effect:{ kind:"MULTI_HIT_CHANCE",value:0.04 } } },
 
-  add("ctl_t2",
-    p(350, 176), NODE_TYPE.NOTABLE,
-    "HOT 마스터", "HOT 공속 +4% · HOT 치명 +2%",
-    { kind: "HOT_MASTER", aspd: 0.04, crit: 0.02 },
-    ["ctl_t1", "ctl_t3", "ctl_x3", "ctl_x4"],
-    NODE_REGION.CTL);
+    // 3: 72° ─ 공속
+    { angle:  72, key:"aspd",  region: NODE_REGION.ATK,
+      ks:    { name:"공속의 폭풍",     desc:"HOT 공속 +30%\n부작용: 기본 피해 -15%",    effect:{ kind:"KS_ASPD",        aspd:0.30, dmgPenalty:0.15 }, glyph:"≫" },
+      not:   { name:"속공 마스터",     desc:"HOT 공속 +8% · HOT 치명 +3%",             effect:{ kind:"HOT_MASTER",     aspd:0.08, crit:0.03 },        glyph:"≫" },
+      preks: { name:"HOT 과부하",      desc:"HOT 공속 +5%",                             effect:{ kind:"HOT_ASPD_ADD",   value:0.05 } },
+      gate:  { name:"HOT 안정화",      desc:"HOT 공속 +3%",                             effect:{ kind:"HOT_ASPD_ADD",   value:0.03 } } },
 
-  add("ctl_t3",
-    p(350, 126), NODE_TYPE.NOTABLE,
-    "표적 시스템", "쿨다운 -3% · 둔화 +5%",
-    { kind: "CDR_SLOW", cd: 0.03, slow: 0.05 },
-    ["ctl_t2", "ctl_x5", "ctl_x6"],
-    NODE_REGION.CTL);
+    // 4: 96° ─ 광폭화
+    { angle:  96, key:"bsrk",  region: NODE_REGION.ATK,
+      ks:    { name:"광폭화",          desc:"공격력 +20% · HOT 공속 +15%\n부작용: 코어 HP -3", effect:{ kind:"KS_BERSERK", dmg:0.20, aspd:0.15, corePenalty:3 }, glyph:"▲" },
+      not:   { name:"전투 광기",       desc:"공격력 +4% · HOT 공속 +5%",               effect:{ kind:"DMG_ASPD",       dmg:0.04, aspd:0.05 },           glyph:"▲" },
+      preks: { name:"야성 해방",       desc:"공격력 +2% · HOT 공속 +3%",               effect:{ kind:"DMG_ASPD",       dmg:0.02, aspd:0.03 } },
+      gate:  { name:"야성의 힘",       desc:"공격력 +1.5%",                             effect:{ kind:"DMG_PCT",        value:0.015 } } },
 
-  // 왼쪽 쿨다운 경로
-  add("ctl_l1",
-    p(296, 233), NODE_TYPE.REGULAR,
-    "기초 서보", "쿨다운 -1%",
-    { kind: "CD_REDUCE_PCT", value: 0.01 },
-    ["ctl_gate", "ctl_l2", "ctl_x1"],
-    NODE_REGION.CTL);
+    // 5: 120° ─ 인생역전
+    { angle: 120, key:"rev",   region: NODE_REGION.LUCK,
+      ks:    { name:"인생역전",        desc:"등급업 +18%\n부작용: 쿨다운 효율 -8%",     effect:{ kind:"KS_REVERSAL",    rarity:0.18, cdPenalty:0.08 },  glyph:"✧" },
+      not:   { name:"도박사의 감각",   desc:"등급업 +5% · 환급 확률 +3%",              effect:{ kind:"GAMBLER",        rarity:0.05, refund:0.03 },      glyph:"✧" },
+      preks: { name:"고위험 베팅",     desc:"등급업 +3%",                              effect:{ kind:"RARITY_UP_ADD",  value:0.03 } },
+      gate:  { name:"행운 체인",       desc:"등급업 +2%",                              effect:{ kind:"RARITY_UP_ADD",  value:0.02 } } },
 
-  add("ctl_l2",
-    p(246, 196), NODE_TYPE.REGULAR,
-    "향상 서보", "쿨다운 -1.5%",
-    { kind: "CD_REDUCE_PCT", value: 0.015 },
-    ["ctl_l1", "ctl_l3", "ctl_x3"],
-    NODE_REGION.CTL);
+    // 6: 144° ─ 백만장자
+    { angle: 144, key:"gold",  region: NODE_REGION.LUCK,
+      ks:    { name:"백만장자",        desc:"레어 티켓 +3\n부작용: 일반 티켓 -5",       effect:{ kind:"KS_MILLIONAIRE", rare:3, commonPenalty:5 },        glyph:"◆" },
+      not:   { name:"황금 손길",       desc:"레어 티켓 +1 · 등급업 +2%",               effect:{ kind:"GOLD_RARE",      rare:1, rarity:0.02 },            glyph:"◆" },
+      preks: { name:"금고 열쇠",       desc:"레어 티켓 +1",                             effect:{ kind:"START_RARE_ADD", value:1 } },
+      gate:  { name:"재투자",          desc:"일반 티켓 +1",                             effect:{ kind:"START_COMMON_ADD",value:1 } } },
 
-  add("ctl_l3",
-    p(196, 162), NODE_TYPE.NOTABLE,
-    "서보 오버클럭", "쿨다운 -4% · 관통력 +0.2",
-    { kind: "CDR_PEN", cd: 0.04, pen: 0.2 },
-    ["ctl_l2", "ctl_l4", "ctl_x7"],
-    NODE_REGION.CTL);
+    // 7: 168° ─ 연쇄반응
+    { angle: 168, key:"chain", region: NODE_REGION.LUCK,
+      ks:    { name:"연쇄 반응",       desc:"보스 전설 +20% · 신화 잭팟 +10%",          effect:{ kind:"KS_CHAIN",       bossLeg:0.20, mythic:0.10 },    glyph:"∞" },
+      not:   { name:"연금술사",        desc:"보스 전설 +6% · 신화 잭팟 +5%",           effect:{ kind:"CHAIN_MASTER",   bossLeg:0.06, mythic:0.05 },    glyph:"∞" },
+      preks: { name:"황금 계획",       desc:"보스 전설 +4%",                            effect:{ kind:"BOSS_EXTRA_LEGEND_CHANCE", value:0.04 } },
+      gate:  { name:"행운 배가",       desc:"보스 전설 +3%",                            effect:{ kind:"BOSS_EXTRA_LEGEND_CHANCE", value:0.03 } } },
 
-  add("ctl_l4",
-    p(152, 132), NODE_TYPE.REGULAR,
-    "극한 서보", "쿨다운 -2%",
-    { kind: "CD_REDUCE_PCT", value: 0.02 },
-    ["ctl_l3", "ctl_lk"],
-    NODE_REGION.CTL);
+    // 8: 192° ─ 빙결의 군주
+    { angle: 192, key:"frost", region: NODE_REGION.DEF,
+      ks:    { name:"빙결의 군주",     desc:"둔화 +40%\n부작용: 공격력 -12%",           effect:{ kind:"KS_FROST",       slow:0.40, dmgPenalty:0.12 },   glyph:"❄" },
+      not:   { name:"서리 마스터",     desc:"둔화 +10% · 관통 +0.2",                   effect:{ kind:"SLOW_PEN",       slow:0.10, pen:0.2 },            glyph:"❄" },
+      preks: { name:"빙결 강화",       desc:"둔화 +8%",                                 effect:{ kind:"SLOW_POWER",     value:0.08 } },
+      gate:  { name:"냉기 기초",       desc:"둔화 +5%",                                 effect:{ kind:"SLOW_POWER",     value:0.05 } } },
 
-  add("ctl_lk",
-    p(108, 104), NODE_TYPE.KEYSTONE,
-    "찰나의 사수", "쿨다운 -22% · 타워 피해 -15%",
-    { kind: "KS_FLASH", cd: 0.22, dmgPenalty: 0.15 },
-    ["ctl_l4"],
-    NODE_REGION.CTL);
+    // 9: 216° ─ 불굴의 요새
+    { angle: 216, key:"fort",  region: NODE_REGION.DEF,
+      ks:    { name:"불굴의 요새",     desc:"코어 HP +15\n부작용: 공격력 -20%",         effect:{ kind:"KS_FORTRESS",    hp:15, dmgPenalty:0.20 },        glyph:"⬡" },
+      not:   { name:"철옹성",          desc:"코어 HP +3 · 코어 피해 -8%",               effect:{ kind:"CORE_FORTRESS",  hp:3,  dmgReduce:0.08 },          glyph:"⬡" },
+      preks: { name:"요새 심화",       desc:"코어 HP +2",                               effect:{ kind:"CORE_HP_ADD",    value:2 } },
+      gate:  { name:"코어 보강",       desc:"코어 HP +1",                               effect:{ kind:"CORE_HP_ADD",    value:1 } } },
 
-  // 오른쪽 코어/HOT 경로
-  add("ctl_r1",
-    p(404, 233), NODE_TYPE.REGULAR,
-    "코어 보강", "코어 HP +1",
-    { kind: "CORE_HP_ADD", value: 1 },
-    ["ctl_gate", "ctl_r2", "ctl_x2"],
-    NODE_REGION.CTL);
+    // 10: 240° ─ 찰나의 사수
+    { angle: 240, key:"cd",    region: NODE_REGION.DEF,
+      ks:    { name:"찰나의 사수",     desc:"쿨다운 -25%\n부작용: 공격력 -15%",         effect:{ kind:"KS_FLASH",       cd:0.25, dmgPenalty:0.15 },     glyph:"⟳" },
+      not:   { name:"서보 오버클럭",   desc:"쿨다운 -4% · HOT 공속 +4%",               effect:{ kind:"CDR_HOT",        cd:0.04, aspd:0.04 },            glyph:"⟳" },
+      preks: { name:"극한 냉각",       desc:"쿨다운 -2.5%",                             effect:{ kind:"CD_REDUCE_PCT",  value:0.025 } },
+      gate:  { name:"자동 서보",       desc:"쿨다운 -2%",                               effect:{ kind:"CD_REDUCE_PCT",  value:0.02 } } },
 
-  add("ctl_r2",
-    p(454, 196), NODE_TYPE.REGULAR,
-    "코어 강화", "코어 HP +1 · 둔화 +3%",
-    { kind: "CORE_SLOW", hp: 1, slow: 0.03 },
-    ["ctl_r1", "ctl_r3", "ctl_x4"],
-    NODE_REGION.CTL);
+    // 11: 264° ─ 관통의 화살
+    { angle: 264, key:"pen",   region: NODE_REGION.HUNT,
+      ks:    { name:"관통의 화살",     desc:"관통 +1.5\n부작용: 공격력 -12%",           effect:{ kind:"KS_PEN",         pen:1.5, dmgPenalty:0.12 },     glyph:"↣" },
+      not:   { name:"장갑 파쇄",       desc:"관통 +0.5 · 압박 피해 +5%",               effect:{ kind:"PEN_PRESSURE",   pen:0.5, pressure:0.05 },        glyph:"↣" },
+      preks: { name:"관통 심화",       desc:"관통 +0.3",                                effect:{ kind:"PEN_ADD",        value:0.3 } },
+      gate:  { name:"관통 훈련",       desc:"관통 +0.2",                                effect:{ kind:"PEN_ADD",        value:0.2 } } },
 
-  add("ctl_r3",
-    p(504, 162), NODE_TYPE.NOTABLE,
-    "철옹성", "코어 HP +3 · 코어 피해 -7%",
-    { kind: "CORE_FORTRESS", hp: 3, dmgReduce: 0.07 },
-    ["ctl_r2", "ctl_r4", "ctl_x8"],
-    NODE_REGION.CTL);
+    // 12: 288° ─ 처형자의 검
+    { angle: 288, key:"exec",  region: NODE_REGION.HUNT,
+      ks:    { name:"처형자의 검",     desc:"처형 피해 +30%\n부작용: 기본 공격력 -10%", effect:{ kind:"KS_EXECUTE",     execute:0.30, dmgPenalty:0.10 }, glyph:"†" },
+      not:   { name:"냉혹한 사냥꾼",   desc:"처형 피해 +8% · 보스 피해 +3%",           effect:{ kind:"EXEC_BOSS",      execute:0.08, boss:0.03 },      glyph:"†" },
+      preks: { name:"처형 강화",       desc:"처형 피해 +5%",                            effect:{ kind:"EXECUTE_DMG_PCT",value:0.05 } },
+      gate:  { name:"처형 훈련",       desc:"처형 피해 +4%",                            effect:{ kind:"EXECUTE_DMG_PCT",value:0.04 } } },
 
-  add("ctl_r4",
-    p(550, 132), NODE_TYPE.REGULAR,
-    "코어 방벽", "코어 피해 -5%",
-    { kind: "CORE_DMG_MUL", value: 0.05 },
-    ["ctl_r3", "ctl_rk"],
-    NODE_REGION.CTL);
+    // 13: 312° ─ 엘리트 분쇄기
+    { angle: 312, key:"elit",  region: NODE_REGION.HUNT,
+      ks:    { name:"엘리트 분쇄기",   desc:"엘리트 피해 +25%\n부작용: 보스 피해 -8%", effect:{ kind:"KS_ELITE",       elite:0.25, bossPenalty:0.08 },  glyph:"★" },
+      not:   { name:"정밀 사격",       desc:"엘리트 피해 +6% · 보스 피해 +2%",         effect:{ kind:"BOSS_ELITE",     elite:0.06, boss:0.02 },          glyph:"★" },
+      preks: { name:"엘리트 분석",     desc:"엘리트 피해 +4%",                          effect:{ kind:"ELITE_DMG_PCT",  value:0.04 } },
+      gate:  { name:"엘리트 추적",     desc:"엘리트 피해 +2.5%",                        effect:{ kind:"ELITE_DMG_PCT",  value:0.025 } } },
 
-  add("ctl_rk",
-    p(592, 104), NODE_TYPE.KEYSTONE,
-    "불굴의 요새", "코어 HP +12 · 타워 피해 -20%",
-    { kind: "KS_FORTRESS", hp: 12, dmgPenalty: 0.20 },
-    ["ctl_r4"],
-    NODE_REGION.CTL);
+    // 14: 336° ─ 보스 학살자
+    { angle: 336, key:"boss",  region: NODE_REGION.HUNT,
+      ks:    { name:"보스 학살자",     desc:"보스 피해 +25%\n부작용: 엘리트 피해 -8%",  effect:{ kind:"KS_BOSS",        boss:0.25, elitePenalty:0.08 },  glyph:"♔" },
+      not:   { name:"강습 공격",       desc:"보스 피해 +6% · 공격력 +2%",              effect:{ kind:"BOSS_DMG_DMG",   boss:0.06, dmg:0.02 },           glyph:"♔" },
+      preks: { name:"보스 분쇄",       desc:"보스 피해 +4%",                            effect:{ kind:"BOSS_DMG_PCT",   value:0.04 } },
+      gate:  { name:"보스 사냥",       desc:"보스 피해 +2%",                            effect:{ kind:"BOSS_DMG_PCT",   value:0.02 } } },
+  ];
 
-  // CTL 보조 연결 노드
-  add("ctl_x1",
-    p(313, 200), NODE_TYPE.REGULAR,
-    "반응 향상", "쿨다운 -1%",
-    { kind: "CD_REDUCE_PCT", value: 0.01 },
-    ["ctl_gate", "ctl_t1", "ctl_l1"],
-    NODE_REGION.CTL);
+  // ── Generate branch nodes ────────────────────────────────────────────────
+  for (let i = 0; i < branchDefs.length; i++) {
+    const b  = branchDefs[i];
+    const pv = (i + N - 1) % N;
+    const nx = (i + 1) % N;
 
-  add("ctl_x2",
-    p(387, 200), NODE_TYPE.REGULAR,
-    "HOT 안정화", "HOT 공속 +2%",
-    { kind: "HOT_ASPD_ADD", value: 0.02 },
-    ["ctl_gate", "ctl_t1", "ctl_r1"],
-    NODE_REGION.CTL);
+    const gateId  = `g${i}`;
+    const notId   = `n${i}`;
+    const preksId = `pk${i}`;
+    const ksId    = `ks_${b.key}`;
 
-  add("ctl_x3",
-    p(272, 152), NODE_TYPE.REGULAR,
-    "냉각 장치", "쿨다운 -1%",
-    { kind: "CD_REDUCE_PCT", value: 0.01 },
-    ["ctl_l2", "ctl_t2"],
-    NODE_REGION.CTL);
+    const gatePos  = bp(b.angle, R_GATE);
+    const notPos   = bp(b.angle, R_NOT);
+    const preksPos = bp(b.angle, R_PREKS);
+    const ksPos    = bp(b.angle, R_KS);
 
-  add("ctl_x4",
-    p(428, 152), NODE_TYPE.REGULAR,
-    "HOT 증폭기", "HOT 치명 +2%",
-    { kind: "HOT_CRIT_ADD", value: 0.02 },
-    ["ctl_r2", "ctl_t2"],
-    NODE_REGION.CTL);
+    add(gateId,  gatePos,  NODE_TYPE.REGULAR,
+      b.gate.name, b.gate.desc, b.gate.effect,
+      ["start", `g${pv}`, `g${nx}`, notId],
+      b.region, getRegionGlyph(b.region));
 
-  add("ctl_x5",
-    p(308, 108), NODE_TYPE.REGULAR,
-    "준비 단축", "준비 시간 -0.1초",
-    { kind: "PREP_REDUCE", value: 0.1 },
-    ["ctl_t3", "ctl_x7"],
-    NODE_REGION.CTL);
+    add(notId,   notPos,   NODE_TYPE.NOTABLE,
+      b.not.name, b.not.desc, b.not.effect,
+      [gateId, preksId],
+      b.region, b.not.glyph);
 
-  add("ctl_x6",
-    p(392, 108), NODE_TYPE.REGULAR,
-    "장갑 관통", "관통력 +0.2",
-    { kind: "PEN_ADD", value: 0.2 },
-    ["ctl_t3", "ctl_x8"],
-    NODE_REGION.CTL);
+    add(preksId, preksPos, NODE_TYPE.REGULAR,
+      b.preks.name, b.preks.desc, b.preks.effect,
+      [notId, ksId],
+      b.region, getRegionGlyph(b.region));
 
-  add("ctl_x7",
-    p(224, 118), NODE_TYPE.REGULAR,
-    "서보 보조", "쿨다운 -1.5%",
-    { kind: "CD_REDUCE_PCT", value: 0.015 },
-    ["ctl_l3", "ctl_x5"],
-    NODE_REGION.CTL);
+    add(ksId,    ksPos,    NODE_TYPE.KEYSTONE,
+      b.ks.name, b.ks.desc, b.ks.effect,
+      [preksId],
+      b.region, b.ks.glyph);
+  }
 
-  add("ctl_x8",
-    p(476, 118), NODE_TYPE.REGULAR,
-    "방어 계층", "코어 피해 -3%",
-    { kind: "CORE_DMG_MUL", value: 0.03 },
-    ["ctl_r3", "ctl_x6"],
-    NODE_REGION.CTL);
+  // ── Bridge nodes between regions ────────────────────────────────────────
+  // ATK↔LUCK (between i=4/96° and i=5/120° → 108°)
+  add("bridge_atk_luck", bp(108, 310), NODE_TYPE.REGULAR,
+    "행운의 전사",  "공격력 +2% · 등급업 +2%",
+    { kind:"DMG_RARITY", dmg:0.02, rarity:0.02 },
+    ["g4", "g5"], NODE_REGION.LUCK, "⚡");
 
-  // ── OFFENSE REGION (좌하단, 빨강) ────────────────────────────────────────
-  // 주간선 (좌하 방향)
-  add("off_t1",
-    p(245, 463), NODE_TYPE.REGULAR,
-    "화력 기초", "공격력 +1.5%",
-    { kind: "DMG_PCT", value: 0.015 },
-    ["off_gate", "off_t2", "off_x1", "off_x3"],
-    NODE_REGION.OFF);
+  // LUCK↔DEF (between i=7/168° and i=8/192° → 180°)
+  add("bridge_luck_def", bp(180, 310), NODE_TYPE.REGULAR,
+    "방어 계략",   "쿨다운 -1.5% · 등급업 +1%",
+    { kind:"CD_LUCK", cd:0.015, rarity:0.01 },
+    ["g7", "g8"], NODE_REGION.DEF, "⬟");
 
-  add("off_t2",
-    p(213, 500), NODE_TYPE.NOTABLE,
-    "화력 강화", "공격력 +4% · 치명타 확률 +1%",
-    { kind: "DMG_CRIT", dmg: 0.04, crit: 0.01 },
-    ["off_t1", "off_t3", "off_l2", "off_x4"],
-    NODE_REGION.OFF);
+  // DEF↔HUNT (between i=10/240° and i=11/264° → 252°)
+  add("bridge_def_hunt", bp(252, 310), NODE_TYPE.REGULAR,
+    "수호의 창",   "관통 +0.2 · 쿨다운 -1.5%",
+    { kind:"PEN_CD", pen:0.2, cd:0.015 },
+    ["g10", "g11"], NODE_REGION.HUNT, "⬟");
 
-  add("off_t3",
-    p(182, 537), NODE_TYPE.NOTABLE,
-    "분노의 포화", "공격력 +5% · 보스 피해 +3%",
-    { kind: "DMG_BOSS", dmg: 0.05, boss: 0.03 },
-    ["off_t2", "off_l3", "off_x5"],
-    NODE_REGION.OFF);
-
-  // 왼쪽 치명타 경로
-  add("off_l1",
-    p(262, 492), NODE_TYPE.REGULAR,
-    "급소 타격", "치명타 확률 +0.8%",
-    { kind: "CRIT_CHANCE_ADD", value: 0.008 },
-    ["off_gate", "off_l2", "off_x3"],
-    NODE_REGION.OFF);
-
-  add("off_l2",
-    p(233, 528), NODE_TYPE.REGULAR,
-    "치명 훈련", "치명타 확률 +0.8% · 배율 +0.04",
-    { kind: "CRIT_COMBO", chance: 0.008, mult: 0.04 },
-    ["off_l1", "off_l3", "off_t2"],
-    NODE_REGION.OFF);
-
-  add("off_l3",
-    p(200, 563), NODE_TYPE.NOTABLE,
-    "치명 마스터", "치명 배율 +0.12 · 보스 피해 +3%",
-    { kind: "CRIT_MASTER", mult: 0.12, boss: 0.03 },
-    ["off_l2", "off_l4", "off_t3"],
-    NODE_REGION.OFF);
-
-  add("off_l4",
-    p(168, 597), NODE_TYPE.REGULAR,
-    "관통 사격", "치명 배율 +0.07",
-    { kind: "CRIT_MULT_ADD", value: 0.07 },
-    ["off_l3", "off_lk"],
-    NODE_REGION.OFF);
-
-  add("off_lk",
-    p(138, 630), NODE_TYPE.KEYSTONE,
-    "크리티컬 폭발", "치명 배율 +0.40 · 치명타 확률 -10%",
-    { kind: "KS_CRIT", mult: 0.40, chancePenalty: 0.10 },
-    ["off_l4"],
-    NODE_REGION.OFF);
-
-  // 오른쪽 보스/처형 경로
-  add("off_r1",
-    p(298, 458), NODE_TYPE.REGULAR,
-    "보스 사냥", "보스 피해 +2%",
-    { kind: "BOSS_DMG_PCT", value: 0.02 },
-    ["off_gate", "off_r2", "off_x2"],
-    NODE_REGION.OFF);
-
-  add("off_r2",
-    p(320, 490), NODE_TYPE.REGULAR,
-    "엘리트 분쇄", "엘리트 피해 +2%",
-    { kind: "ELITE_DMG_PCT", value: 0.02 },
-    ["off_r1", "off_r3", "off_x4"],
-    NODE_REGION.OFF);
-
-  add("off_r3",
-    p(335, 524), NODE_TYPE.NOTABLE,
-    "정밀 사격", "보스 피해 +5% · 엘리트 피해 +4%",
-    { kind: "BOSS_ELITE", boss: 0.05, elite: 0.04 },
-    ["off_r2", "off_r4", "off_x5"],
-    NODE_REGION.OFF);
-
-  add("off_r4",
-    p(325, 560), NODE_TYPE.REGULAR,
-    "처형 훈련", "처형 피해 +4%",
-    { kind: "EXECUTE_DMG_PCT", value: 0.04 },
-    ["off_r3", "off_rk"],
-    NODE_REGION.OFF);
-
-  add("off_rk",
-    p(313, 596), NODE_TYPE.KEYSTONE,
-    "냉혹한 사냥꾼", "처형 피해 +20% · 공격력 -8%",
-    { kind: "KS_EXECUTE", execute: 0.20, dmgPenalty: 0.08 },
-    ["off_r4"],
-    NODE_REGION.OFF);
-
-  // OFF 보조 연결 노드
-  add("off_x1",
-    p(263, 454), NODE_TYPE.REGULAR,
-    "압박 공격", "압박 피해 +3%",
-    { kind: "PRESSURE_DMG_PCT", value: 0.03 },
-    ["off_gate", "off_t1"],
-    NODE_REGION.OFF);
-
-  add("off_x2",
-    p(298, 434), NODE_TYPE.REGULAR,
-    "강타", "공격력 +1%",
-    { kind: "DMG_PCT", value: 0.01 },
-    ["off_gate", "off_r1"],
-    NODE_REGION.OFF);
-
-  add("off_x3",
-    p(246, 484), NODE_TYPE.REGULAR,
-    "집중 사격", "치명타 확률 +0.5%",
-    { kind: "CRIT_CHANCE_ADD", value: 0.005 },
-    ["off_t1", "off_l1"],
-    NODE_REGION.OFF);
-
-  add("off_x4",
-    p(265, 510), NODE_TYPE.REGULAR,
-    "연속 공격", "공격력 +1.5%",
-    { kind: "DMG_PCT", value: 0.015 },
-    ["off_t2", "off_r2"],
-    NODE_REGION.OFF);
-
-  add("off_x5",
-    p(255, 548), NODE_TYPE.REGULAR,
-    "파괴 의지", "공격력 +2%",
-    { kind: "DMG_PCT", value: 0.02 },
-    ["off_t3", "off_r3"],
-    NODE_REGION.OFF);
-
-  // ── GAMBLE REGION (우하단, 금색) ─────────────────────────────────────────
-  // 주간선
-  add("gmb_t1",
-    p(455, 463), NODE_TYPE.REGULAR,
-    "씨앗 자본", "일반 티켓 +1 · 등급업 +1%",
-    { kind: "LUCK_START", common: 1, rarity: 0.01 },
-    ["gmb_gate", "gmb_t2", "gmb_x1", "gmb_x3"],
-    NODE_REGION.GMB);
-
-  add("gmb_t2",
-    p(487, 500), NODE_TYPE.NOTABLE,
-    "도박사의 감각", "등급업 +3% · 환급 확률 +3%",
-    { kind: "GAMBLER", rarity: 0.03, refund: 0.03 },
-    ["gmb_t1", "gmb_t3", "gmb_r2", "gmb_x4"],
-    NODE_REGION.GMB);
-
-  add("gmb_t3",
-    p(518, 537), NODE_TYPE.NOTABLE,
-    "황금 손길", "보스 전설 +6% · 레어 수익 +4%",
-    { kind: "GOLD_TOUCH", bossLeg: 0.06, rareInc: 0.04 },
-    ["gmb_t2", "gmb_r3", "gmb_x5"],
-    NODE_REGION.GMB);
-
-  // 왼쪽 수입 경로
-  add("gmb_l1",
-    p(402, 458), NODE_TYPE.REGULAR,
-    "재투자", "일반 티켓 +1",
-    { kind: "START_COMMON_ADD", value: 1 },
-    ["gmb_gate", "gmb_l2", "gmb_x2"],
-    NODE_REGION.GMB);
-
-  add("gmb_l2",
-    p(380, 490), NODE_TYPE.REGULAR,
-    "재원 확보", "일반 +1 · 레어 +0.5",
-    { kind: "START_COMMON_RARE", common: 1, rare: 0.5 },
-    ["gmb_l1", "gmb_l3", "gmb_x4"],
-    NODE_REGION.GMB);
-
-  add("gmb_l3",
-    p(365, 524), NODE_TYPE.NOTABLE,
-    "풍요의 주머니", "일반 +2 · 레어 +1",
-    { kind: "START_BIG", common: 2, rare: 1 },
-    ["gmb_l2", "gmb_l4", "gmb_x5"],
-    NODE_REGION.GMB);
-
-  add("gmb_l4",
-    p(370, 560), NODE_TYPE.REGULAR,
-    "부의 근원", "레어 티켓 +1",
-    { kind: "START_RARE_ADD", value: 1 },
-    ["gmb_l3", "gmb_lk"],
-    NODE_REGION.GMB);
-
-  add("gmb_lk",
-    p(385, 596), NODE_TYPE.KEYSTONE,
-    "백만장자", "레어 티켓 +3 · 일반 티켓 -4",
-    { kind: "KS_MILLIONAIRE", rare: 3, commonPenalty: 4 },
-    ["gmb_l4"],
-    NODE_REGION.GMB);
-
-  // 오른쪽 리롤/등급 경로
-  add("gmb_r1",
-    p(438, 492), NODE_TYPE.REGULAR,
-    "리롤 준비금", "환급 확률 +3%",
-    { kind: "REROLL_REFUND_CHANCE", value: 0.03 },
-    ["gmb_gate", "gmb_r2", "gmb_x3"],
-    NODE_REGION.GMB);
-
-  add("gmb_r2",
-    p(480, 528), NODE_TYPE.REGULAR,
-    "행운 배가", "등급업 +2% · 환급 +2%",
-    { kind: "RARITY_REFUND", rarity: 0.02, refund: 0.02 },
-    ["gmb_r1", "gmb_r3", "gmb_t2"],
-    NODE_REGION.GMB);
-
-  add("gmb_r3",
-    p(515, 563), NODE_TYPE.NOTABLE,
-    "연금술사", "등급업 +5% · SPECIAL 환급 +10%",
-    { kind: "ALCHEMIST", rarity: 0.05, special: 0.10 },
-    ["gmb_r2", "gmb_r4", "gmb_t3"],
-    NODE_REGION.GMB);
-
-  add("gmb_r4",
-    p(535, 597), NODE_TYPE.REGULAR,
-    "잭팟 준비", "신화 잭팟 +6%",
-    { kind: "MYTHIC_JACKPOT_CHANCE", value: 0.06 },
-    ["gmb_r3", "gmb_rk"],
-    NODE_REGION.GMB);
-
-  add("gmb_rk",
-    p(562, 630), NODE_TYPE.KEYSTONE,
-    "인생역전", "등급업 +15% · 쿨다운 효율 -8%",
-    { kind: "KS_REVERSAL", rarity: 0.15, cdPenalty: 0.08 },
-    ["gmb_r4"],
-    NODE_REGION.GMB);
-
-  // GMB 보조 연결 노드
-  add("gmb_x1",
-    p(437, 454), NODE_TYPE.REGULAR,
-    "행운 체인", "SPECIAL 환급 +5%",
-    { kind: "SPECIAL_REFUND_CHANCE", value: 0.05 },
-    ["gmb_gate", "gmb_t1"],
-    NODE_REGION.GMB);
-
-  add("gmb_x2",
-    p(402, 434), NODE_TYPE.REGULAR,
-    "초기 자금", "일반 티켓 +1",
-    { kind: "START_COMMON_ADD", value: 1 },
-    ["gmb_gate", "gmb_l1"],
-    NODE_REGION.GMB);
-
-  add("gmb_x3",
-    p(454, 484), NODE_TYPE.REGULAR,
-    "연속 배팅", "보스 전설 +3%",
-    { kind: "BOSS_EXTRA_LEGEND_CHANCE", value: 0.03 },
-    ["gmb_t1", "gmb_r1"],
-    NODE_REGION.GMB);
-
-  add("gmb_x4",
-    p(435, 510), NODE_TYPE.REGULAR,
-    "재확인", "환급 확률 +2%",
-    { kind: "REROLL_REFUND_CHANCE", value: 0.02 },
-    ["gmb_t2", "gmb_l2"],
-    NODE_REGION.GMB);
-
-  add("gmb_x5",
-    p(445, 548), NODE_TYPE.REGULAR,
-    "황금 계획", "레어 수익 +3%",
-    { kind: "EXTRA_RARE_CHANCE", value: 0.03 },
-    ["gmb_t3", "gmb_l3"],
-    NODE_REGION.GMB);
+  // HUNT↔ATK (between i=14/336° and i=0/0° → 348°)
+  add("bridge_hunt_atk", bp(348, 310), NODE_TYPE.REGULAR,
+    "공략 마스터", "공격력 +2% · 보스 피해 +2%",
+    { kind:"DMG_BOSS_COMBO", dmg:0.02, boss:0.02 },
+    ["g14", "g0"], NODE_REGION.ATK, "⬟");
 
   return nodes;
 }
 
-export const PASSIVE_NODES = buildNodes();
+export const PASSIVE_NODES    = buildNodes();
 export const PASSIVE_NODE_MAP = new Map(PASSIVE_NODES.map(n => [n.id, n]));
 
 // ─── State management ────────────────────────────────────────────────────────
@@ -507,25 +259,27 @@ export function defaultMetaState() {
 
 export function loadMetaState() {
   try {
-    // 새 v2 형식 먼저 시도
     const raw = localStorage.getItem(META_STORAGE_KEY);
     if (raw) {
       const obj = JSON.parse(raw);
       if (obj && obj.v === META_VERSION) {
         const out = defaultMetaState();
-        out.xp = Math.max(0, Math.floor(obj.xp ?? 0));
+        out.xp        = Math.max(0, Math.floor(obj.xp ?? 0));
         out.allocated = Array.isArray(obj.allocated)
           ? obj.allocated.filter(id => PASSIVE_NODE_MAP.has(id))
           : [];
         return out;
       }
     }
-    // v1 마이그레이션: XP 보존, 노드 초기화
-    const rawV1 = localStorage.getItem("lotto_td_meta_v1");
-    if (rawV1) {
-      const objV1 = JSON.parse(rawV1);
-      const xp = Math.max(0, Math.floor(objV1?.xp ?? 0));
-      return { v: META_VERSION, xp, allocated: [] };
+    // Migrate from any older version: preserve XP, reset nodes
+    const keys = ["lotto_td_meta_v2", "lotto_td_meta_v1"];
+    for (const k of keys) {
+      const legacy = localStorage.getItem(k);
+      if (legacy) {
+        const obj = JSON.parse(legacy);
+        const xp  = Math.max(0, Math.floor(obj?.xp ?? 0));
+        return { v: META_VERSION, xp, allocated: [] };
+      }
     }
   } catch { /* ignore */ }
   return defaultMetaState();
@@ -534,8 +288,8 @@ export function loadMetaState() {
 export function saveMetaState(meta) {
   try {
     localStorage.setItem(META_STORAGE_KEY, JSON.stringify({
-      v: META_VERSION,
-      xp: meta.xp ?? 0,
+      v:         META_VERSION,
+      xp:        meta.xp ?? 0,
       allocated: meta.allocated ?? [],
     }));
   } catch { /* ignore */ }
@@ -545,26 +299,23 @@ export function isAllocated(meta, id) {
   return (meta.allocated ?? []).includes(id);
 }
 
-/** 노드 활성화 가능 여부 체크 */
 export function canAllocate(meta, nodeId) {
   const node = PASSIVE_NODE_MAP.get(nodeId);
   if (!node) return { ok: false, reason: "NOT_FOUND" };
   if (node.type === NODE_TYPE.START) return { ok: false, reason: "START" };
   if (isAllocated(meta, nodeId)) return { ok: false, reason: "ALREADY" };
 
-  const cost = NODE_COST[node.type] ?? 30;
+  const cost = NODE_COST[node.type] ?? 25;
   if ((meta.xp ?? 0) < cost) return { ok: false, reason: "NO_XP", cost };
 
-  // 연결 체크: 인접 노드 중 하나라도 활성화된 것이 있어야 함
   const allocSet = new Set(meta.allocated ?? []);
-  allocSet.add("start"); // start는 항상 활성
+  allocSet.add("start");
   const connected = node.connections.some(id => allocSet.has(id));
   if (!connected) return { ok: false, reason: "NOT_CONNECTED", cost };
 
   return { ok: true, cost };
 }
 
-/** 노드 활성화 실행. 성공 시 true 반환 */
 export function allocateNode(meta, nodeId) {
   const chk = canAllocate(meta, nodeId);
   if (!chk.ok) return false;
@@ -574,7 +325,46 @@ export function allocateNode(meta, nodeId) {
   return true;
 }
 
-/** 하나라도 활성화 가능한 노드가 있으면 true */
+/** 환불 가능 여부: 제거해도 나머지 노드가 여전히 start에 연결되어야 함 */
+export function canDeallocate(meta, nodeId) {
+  if (!isAllocated(meta, nodeId)) return { ok: false, reason: "NOT_ALLOCATED" };
+  if (nodeId === "start") return { ok: false, reason: "START" };
+
+  const remaining    = (meta.allocated ?? []).filter(id => id !== nodeId);
+  const remainingSet = new Set(remaining);
+  remainingSet.add("start");
+
+  // BFS from start through remaining allocated nodes
+  const visited = new Set(["start"]);
+  const queue   = ["start"];
+  while (queue.length > 0) {
+    const cur  = queue.shift();
+    const node = PASSIVE_NODE_MAP.get(cur);
+    if (!node) continue;
+    for (const connId of (node.connections || [])) {
+      if (!visited.has(connId) && remainingSet.has(connId)) {
+        visited.add(connId);
+        queue.push(connId);
+      }
+    }
+  }
+
+  for (const id of remaining) {
+    if (!visited.has(id)) return { ok: false, reason: "WOULD_DISCONNECT" };
+  }
+
+  const cost = NODE_COST[PASSIVE_NODE_MAP.get(nodeId)?.type ?? "regular"];
+  return { ok: true, cost };
+}
+
+export function deallocateNode(meta, nodeId) {
+  const chk = canDeallocate(meta, nodeId);
+  if (!chk.ok) return false;
+  meta.allocated = (meta.allocated ?? []).filter(id => id !== nodeId);
+  meta.xp        = (meta.xp ?? 0) + chk.cost; // 전액 환불
+  return true;
+}
+
 export function canAllocateAny(meta) {
   for (const node of PASSIVE_NODES) {
     if (node.type === NODE_TYPE.START) continue;
@@ -590,48 +380,37 @@ export function computeSkillMods(meta) {
   allocSet.add("start");
 
   const mods = {
-    dmgPct: 0,
-    bossDmgPct: 0,
-    eliteDmgPct: 0,
-    pressureDmgPct: 0,
-    executeDmgPct: 0,
+    dmgPct:                0,
+    bossDmgPct:            0,
+    eliteDmgPct:           0,
+    pressureDmgPct:        0,
+    executeDmgPct:         0,
 
-    critChanceAdd: 0,
-    critMultAdd: 0,
+    critChanceAdd:         0,
+    critMultAdd:           0,
 
-    cdReducePct: 0,
+    cdReducePct:           0,
 
-    hotAspdAdd: 0,
-    hotCritAdd: 0,
-    hotCountAdd: 0,
+    hotAspdAdd:            0,
+    hotCritAdd:            0,
 
-    slowPower: 0,
-    prepReduceSec: 0,
+    multiHitChance:        0,
 
-    penAdd: 0,
+    slowPower:             0,
+    penAdd:                0,
 
-    coreHpAdd: 0,
-    coreDmgMul: 1,
+    coreHpAdd:             0,
+    coreDmgMul:            1,
 
-    enemyHpMul: 1,
+    startCommonAdd:        0,
+    startRareAdd:          0,
 
-    startCommonAdd: 0,
-    startRareAdd: 0,
-    startLegendAdd: 0,
-
-    rarityUpChance: 0,
-    rerollRefundChance: 0,
-
-    streakBestOfBonus: 0,
-
-    extraCommonChance: 0,
-    extraRareChance: 0,
+    rarityUpChance:        0,
+    rerollRefundChance:    0,
+    specialRefundChance:   0,
+    mythicJackpotChance:   0,
     bossExtraLegendChance: 0,
-
-    legendRerollDiscount: 0,
-
-    specialRefundChance: 0,
-    mythicJackpotChance: 0,
+    extraRareChance:       0,
   };
 
   for (const node of PASSIVE_NODES) {
@@ -639,146 +418,119 @@ export function computeSkillMods(meta) {
     const e = node.effect;
 
     switch (e.kind) {
-      // 단순 수치
-      case "CD_REDUCE_PCT":          mods.cdReducePct += e.value; break;
-      case "DMG_PCT":                mods.dmgPct += e.value; break;
-      case "BOSS_DMG_PCT":           mods.bossDmgPct += e.value; break;
-      case "ELITE_DMG_PCT":          mods.eliteDmgPct += e.value; break;
-      case "PRESSURE_DMG_PCT":       mods.pressureDmgPct += e.value; break;
-      case "EXECUTE_DMG_PCT":        mods.executeDmgPct += e.value; break;
-      case "CRIT_CHANCE_ADD":        mods.critChanceAdd += e.value; break;
-      case "CRIT_MULT_ADD":          mods.critMultAdd += e.value; break;
-      case "HOT_ASPD_ADD":           mods.hotAspdAdd += e.value; break;
-      case "HOT_CRIT_ADD":           mods.hotCritAdd += e.value; break;
-      case "SLOW_POWER":             mods.slowPower += e.value; break;
-      case "PREP_REDUCE":            mods.prepReduceSec += e.value; break;
-      case "PEN_ADD":                mods.penAdd += e.value; break;
-      case "CORE_HP_ADD":            mods.coreHpAdd += e.value; break;
-      case "CORE_DMG_MUL":           mods.coreDmgMul *= (1 - e.value); break;
-      case "START_COMMON_ADD":       mods.startCommonAdd += e.value; break;
-      case "START_RARE_ADD":         mods.startRareAdd += e.value; break;
-      case "REROLL_REFUND_CHANCE":   mods.rerollRefundChance += e.value; break;
-      case "SPECIAL_REFUND_CHANCE":  mods.specialRefundChance += e.value; break;
-      case "MYTHIC_JACKPOT_CHANCE":  mods.mythicJackpotChance += e.value; break;
-      case "BOSS_EXTRA_LEGEND_CHANCE": mods.bossExtraLegendChance += e.value; break;
-      case "EXTRA_RARE_CHANCE":      mods.extraRareChance += e.value; break;
-      case "STREAK_BESTOF_BONUS":    mods.streakBestOfBonus += e.value; break;
+      // ── Simple ──────────────────────────────────────────────────────────
+      case "DMG_PCT":                  mods.dmgPct               += e.value; break;
+      case "BOSS_DMG_PCT":             mods.bossDmgPct           += e.value; break;
+      case "ELITE_DMG_PCT":            mods.eliteDmgPct          += e.value; break;
+      case "PRESSURE_DMG_PCT":         mods.pressureDmgPct       += e.value; break;
+      case "EXECUTE_DMG_PCT":          mods.executeDmgPct        += e.value; break;
+      case "CRIT_CHANCE_ADD":          mods.critChanceAdd        += e.value; break;
+      case "CRIT_MULT_ADD":            mods.critMultAdd          += e.value; break;
+      case "HOT_ASPD_ADD":             mods.hotAspdAdd           += e.value; break;
+      case "HOT_CRIT_ADD":             mods.hotCritAdd           += e.value; break;
+      case "SLOW_POWER":               mods.slowPower            += e.value; break;
+      case "PEN_ADD":                  mods.penAdd               += e.value; break;
+      case "CORE_HP_ADD":              mods.coreHpAdd            += e.value; break;
+      case "CORE_DMG_MUL":             mods.coreDmgMul           *= (1 - e.value); break;
+      case "START_COMMON_ADD":         mods.startCommonAdd       += e.value; break;
+      case "START_RARE_ADD":           mods.startRareAdd         += e.value; break;
+      case "REROLL_REFUND_CHANCE":     mods.rerollRefundChance   += e.value; break;
+      case "SPECIAL_REFUND_CHANCE":    mods.specialRefundChance  += e.value; break;
+      case "MYTHIC_JACKPOT_CHANCE":    mods.mythicJackpotChance  += e.value; break;
+      case "BOSS_EXTRA_LEGEND_CHANCE": mods.bossExtraLegendChance+= e.value; break;
+      case "EXTRA_RARE_CHANCE":        mods.extraRareChance      += e.value; break;
+      case "RARITY_UP_ADD":            mods.rarityUpChance       += e.value; break;
+      case "MULTI_HIT_CHANCE":         mods.multiHitChance       += e.value; break;
 
-      // 복합 효과
+      // ── Compound ────────────────────────────────────────────────────────
       case "HOT_MASTER":
-        mods.hotAspdAdd += e.aspd;
-        mods.hotCritAdd += e.crit;
-        break;
-      case "CDR_SLOW":
-        mods.cdReducePct += e.cd;
-        mods.slowPower += e.slow;
-        break;
-      case "CDR_PEN":
-        mods.cdReducePct += e.cd;
-        mods.penAdd += e.pen;
-        break;
-      case "CORE_SLOW":
-        mods.coreHpAdd += e.hp;
-        mods.slowPower += e.slow;
-        break;
-      case "CORE_FORTRESS":
-        mods.coreHpAdd += e.hp;
-        mods.coreDmgMul *= (1 - e.dmgReduce);
-        break;
-      case "DMG_CRIT":
-        mods.dmgPct += e.dmg;
-        mods.critChanceAdd += e.crit;
-        break;
-      case "DMG_BOSS":
-        mods.dmgPct += e.dmg;
-        mods.bossDmgPct += e.boss;
-        break;
+        mods.hotAspdAdd  += e.aspd; mods.hotCritAdd    += e.crit; break;
       case "CRIT_COMBO":
-        mods.critChanceAdd += e.chance;
-        mods.critMultAdd += e.mult;
-        break;
-      case "CRIT_MASTER":
-        mods.critMultAdd += e.mult;
-        mods.bossDmgPct += e.boss;
-        break;
-      case "BOSS_ELITE":
-        mods.bossDmgPct += e.boss;
-        mods.eliteDmgPct += e.elite;
-        break;
-      case "LUCK_START":
-        mods.startCommonAdd += e.common;
-        mods.rarityUpChance += e.rarity;
-        break;
+        mods.critChanceAdd += e.chance; mods.critMultAdd += e.mult; break;
+      case "DMG_BOSS":
+        mods.dmgPct      += e.dmg;  mods.bossDmgPct    += e.boss; break;
+      case "DMG_ASPD":
+        mods.dmgPct      += e.dmg;  mods.hotAspdAdd    += e.aspd; break;
+      case "MULTI_DMG":
+        mods.multiHitChance += e.multi; mods.dmgPct    += e.dmg;  break;
       case "GAMBLER":
-        mods.rarityUpChance += e.rarity;
-        mods.rerollRefundChance += e.refund;
-        break;
-      case "GOLD_TOUCH":
-        mods.bossExtraLegendChance += e.bossLeg;
-        mods.extraRareChance += e.rareInc;
-        break;
-      case "START_COMMON_RARE":
-        mods.startCommonAdd += e.common;
-        mods.startRareAdd += e.rare;
-        break;
-      case "START_BIG":
-        mods.startCommonAdd += e.common;
-        mods.startRareAdd += e.rare;
-        break;
-      case "RARITY_REFUND":
-        mods.rarityUpChance += e.rarity;
-        mods.rerollRefundChance += e.refund;
-        break;
-      case "ALCHEMIST":
-        mods.rarityUpChance += e.rarity;
-        mods.specialRefundChance += e.special;
-        break;
+        mods.rarityUpChance += e.rarity; mods.rerollRefundChance += e.refund; break;
+      case "GOLD_RARE":
+        mods.startRareAdd+= e.rare; mods.rarityUpChance+= e.rarity; break;
+      case "CHAIN_MASTER":
+        mods.bossExtraLegendChance += e.bossLeg; mods.mythicJackpotChance += e.mythic; break;
+      case "SLOW_PEN":
+        mods.slowPower   += e.slow; mods.penAdd        += e.pen;  break;
+      case "CORE_FORTRESS":
+        mods.coreHpAdd   += e.hp;   mods.coreDmgMul   *= (1 - e.dmgReduce); break;
+      case "CDR_HOT":
+        mods.cdReducePct += e.cd;   mods.hotAspdAdd    += e.aspd; break;
+      case "PEN_PRESSURE":
+        mods.penAdd      += e.pen;  mods.pressureDmgPct+= e.pressure; break;
+      case "EXEC_BOSS":
+        mods.executeDmgPct += e.execute; mods.bossDmgPct += e.boss; break;
+      case "BOSS_ELITE":
+        mods.bossDmgPct  += e.boss; mods.eliteDmgPct   += e.elite; break;
+      case "BOSS_DMG_DMG":
+        mods.bossDmgPct  += e.boss; mods.dmgPct        += e.dmg;  break;
+      case "DMG_RARITY":
+        mods.dmgPct      += e.dmg;  mods.rarityUpChance+= e.rarity; break;
+      case "CD_LUCK":
+        mods.cdReducePct += e.cd;   mods.rarityUpChance+= e.rarity; break;
+      case "PEN_CD":
+        mods.penAdd      += e.pen;  mods.cdReducePct   += e.cd;   break;
+      case "DMG_BOSS_COMBO":
+        mods.dmgPct      += e.dmg;  mods.bossDmgPct    += e.boss; break;
 
-      // 키스톤 (강력하지만 부작용 있음)
-      case "KS_FLASH":    // 찰나의 사수: CD -22%, DMG -15%
-        mods.cdReducePct += e.cd;
-        mods.dmgPct -= e.dmgPenalty;
-        break;
-      case "KS_FORTRESS": // 불굴의 요새: Core HP +12, DMG -20%
-        mods.coreHpAdd += e.hp;
-        mods.dmgPct -= e.dmgPenalty;
-        break;
-      case "KS_CRIT":     // 크리티컬 폭발: Crit Mult +0.40, Crit Chance -10%
-        mods.critMultAdd += e.mult;
-        mods.critChanceAdd -= e.chancePenalty;
-        break;
-      case "KS_EXECUTE":  // 냉혹한 사냥꾼: Execute +20%, DMG -8%
-        mods.executeDmgPct += e.execute;
-        mods.dmgPct -= e.dmgPenalty;
-        break;
-      case "KS_MILLIONAIRE": // 백만장자: Rare +3, Common -4
-        mods.startRareAdd += e.rare;
-        mods.startCommonAdd -= e.commonPenalty;
-        break;
-      case "KS_REVERSAL": // 인생역전: Rarity +15%, CD penalty -8%
-        mods.rarityUpChance += e.rarity;
-        mods.cdReducePct -= e.cdPenalty;
-        break;
+      // ── Keystones ───────────────────────────────────────────────────────
+      case "KS_HEAVYBLADE":
+        mods.dmgPct      += e.dmg;  mods.hotAspdAdd    -= e.aspdPenalty; break;
+      case "KS_CRIT":
+        mods.critMultAdd += e.mult; mods.critChanceAdd -= e.chancePenalty; break;
+      case "KS_MULTISHOT":
+        mods.multiHitChance += e.multi; mods.dmgPct    -= e.dmgPenalty; break;
+      case "KS_ASPD":
+        mods.hotAspdAdd  += e.aspd; mods.dmgPct        -= e.dmgPenalty; break;
+      case "KS_BERSERK":
+        mods.dmgPct      += e.dmg;  mods.hotAspdAdd    += e.aspd;
+        mods.coreHpAdd   -= e.corePenalty; break;
+      case "KS_REVERSAL":
+        mods.rarityUpChance += e.rarity; mods.cdReducePct -= e.cdPenalty; break;
+      case "KS_MILLIONAIRE":
+        mods.startRareAdd+= e.rare; mods.startCommonAdd-= e.commonPenalty; break;
+      case "KS_CHAIN":
+        mods.bossExtraLegendChance += e.bossLeg; mods.mythicJackpotChance += e.mythic; break;
+      case "KS_FROST":
+        mods.slowPower   += e.slow; mods.dmgPct        -= e.dmgPenalty; break;
+      case "KS_FORTRESS":
+        mods.coreHpAdd   += e.hp;   mods.dmgPct        -= e.dmgPenalty; break;
+      case "KS_FLASH":
+        mods.cdReducePct += e.cd;   mods.dmgPct        -= e.dmgPenalty; break;
+      case "KS_PEN":
+        mods.penAdd      += e.pen;  mods.dmgPct        -= e.dmgPenalty; break;
+      case "KS_EXECUTE":
+        mods.executeDmgPct += e.execute; mods.dmgPct  -= e.dmgPenalty; break;
+      case "KS_ELITE":
+        mods.eliteDmgPct += e.elite; mods.bossDmgPct  -= e.bossPenalty; break;
+      case "KS_BOSS":
+        mods.bossDmgPct  += e.boss; mods.eliteDmgPct   -= e.elitePenalty; break;
 
       default: break;
     }
   }
 
-  // 수치 상한/하한 적용
-  mods.cdReducePct          = clamp(mods.cdReducePct, -0.15, 0.45);
-  mods.critChanceAdd        = clamp(mods.critChanceAdd, -0.15, 0.25);
-  mods.rarityUpChance       = clamp(mods.rarityUpChance, 0, 0.25);
-  mods.rerollRefundChance   = clamp(mods.rerollRefundChance, 0, 0.25);
-  mods.specialRefundChance  = clamp(mods.specialRefundChance, 0, 0.50);
-  mods.mythicJackpotChance  = clamp(mods.mythicJackpotChance, 0, 0.70);
-  mods.bossExtraLegendChance= clamp(mods.bossExtraLegendChance, 0, 0.80);
-  mods.extraRareChance      = clamp(mods.extraRareChance, 0, 0.60);
-  mods.slowPower            = clamp(mods.slowPower, 0, 0.40);
-  mods.coreDmgMul           = clamp(mods.coreDmgMul, 0.50, 1.0);
-  mods.pressureDmgPct       = clamp(mods.pressureDmgPct, 0, 0.35);
-  mods.prepReduceSec        = clamp(mods.prepReduceSec, 0, 0.60);
+  // 상한/하한
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  mods.cdReducePct           = clamp(mods.cdReducePct,           -0.15, 0.45);
+  mods.critChanceAdd         = clamp(mods.critChanceAdd,         -0.15, 0.30);
+  mods.rarityUpChance        = clamp(mods.rarityUpChance,         0,    0.30);
+  mods.rerollRefundChance    = clamp(mods.rerollRefundChance,     0,    0.30);
+  mods.specialRefundChance   = clamp(mods.specialRefundChance,    0,    0.50);
+  mods.mythicJackpotChance   = clamp(mods.mythicJackpotChance,    0,    0.70);
+  mods.bossExtraLegendChance = clamp(mods.bossExtraLegendChance,  0,    0.80);
+  mods.slowPower             = clamp(mods.slowPower,              0,    0.45);
+  mods.coreDmgMul            = clamp(mods.coreDmgMul,             0.50, 1.0);
+  mods.multiHitChance        = clamp(mods.multiHitChance,         0,    0.60);
 
   return mods;
 }
-
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
