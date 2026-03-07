@@ -37,6 +37,8 @@ import {
   isAllocated,
   canAllocate,
   allocateNode,
+  canDeallocate,
+  deallocateNode,
   canAllocateAny,
 } from "../systems/skills.js";
 
@@ -257,7 +259,7 @@ export async function initEngine() {
 
   const skillOverlay = document.getElementById("skill-overlay");
   const skillCloseBtn = document.getElementById("skill-close");
-  const skillDetail = document.getElementById("skill-detail");
+  // skill-detail removed (replaced by floating skill-node-panel)
   const elSkillXp = document.getElementById("skill-xp");
 
   // ✅ 웨이브 타입 예고 UI 요소 (index.html에 추가됨)
@@ -1116,31 +1118,46 @@ export async function initEngine() {
     }
   }
 
-  // ---------------- Skill tree (POE canvas) ----------------
+  // ---------------- Skill tree (POE canvas – pan/zoom/drag) ----------------
 
-  let poeCanvas = null;
-  let poeCtx = null;
+  let poeCanvas   = null;
+  let poeCtx      = null;
   let poeHoverNode = null;
+  let poeSelNode   = null;   // currently selected node (info panel)
 
+  // Pan / zoom state (world = 1800×1800)
+  let poeScale  = 0.46;
+  let poeOffX   = 0;
+  let poeOffY   = 0;
+  let poeDrag   = false;
+  let poeDragX  = 0;
+  let poeDragY  = 0;
+  let poeDragOX = 0;
+  let poeDragOY = 0;
+  let poeDragMoved = false;
+
+  // Radius in world coords
   function poeNodeRadius(type) {
     switch (type) {
-      case NODE_TYPE.START:    return 18;
-      case NODE_TYPE.KEYSTONE: return 14;
-      case NODE_TYPE.NOTABLE:  return 11;
-      default:                 return 7;
+      case NODE_TYPE.START:    return 28;
+      case NODE_TYPE.KEYSTONE: return 22;
+      case NODE_TYPE.NOTABLE:  return 15;
+      default:                 return 9;
     }
   }
 
-  function poeFindNode(cx, cy) {
+  // Client-relative coords (inside canvas element) → world coords
+  function screenToWorld(ex, ey) {
+    return { x: (ex - poeOffX) / poeScale, y: (ey - poeOffY) / poeScale };
+  }
+
+  function poeFindNode(ex, ey) {
     if (!poeCanvas) return null;
-    const dpr = window.devicePixelRatio || 1;
-    const sx = poeCanvas.width / POE_W;
-    const sy = poeCanvas.height / POE_H;
+    const { x: wx, y: wy } = screenToWorld(ex, ey);
     let best = null, bestD2 = Infinity;
     for (const nd of PASSIVE_NODES) {
-      const px = nd.x * sx, py = nd.y * sy;
-      const r = poeNodeRadius(nd.type) * dpr + 8;
-      const d2 = (cx - px) ** 2 + (cy - py) ** 2;
+      const r  = poeNodeRadius(nd.type) + 10;
+      const d2 = (wx - nd.x) ** 2 + (wy - nd.y) ** 2;
       if (d2 < r * r && d2 < bestD2) { bestD2 = d2; best = nd; }
     }
     return best;
@@ -1148,121 +1165,254 @@ export async function initEngine() {
 
   function drawPoeTree() {
     if (!poeCanvas || !poeCtx) return;
-    const c = poeCtx;
+    const c   = poeCtx;
     const dpr = window.devicePixelRatio || 1;
-    const W = poeCanvas.width, H = poeCanvas.height;
-    const sx = W / POE_W, sy = H / POE_H;
-    const allocSet = new Set(meta.allocated ?? []);
-    allocSet.add("start");
+    const W   = poeCanvas.width;
+    const H   = poeCanvas.height;
+
     c.clearRect(0, 0, W, H);
 
-    // Draw connections
+    // background
+    c.fillStyle = "rgba(8,12,24,1)";
+    c.fillRect(0, 0, W, H);
+
+    // Apply world→screen transform (account for DPR)
+    c.save();
+    c.scale(dpr, dpr);
+    c.translate(poeOffX, poeOffY);
+    c.scale(poeScale, poeScale);
+
+    const allocSet = new Set(meta.allocated ?? []);
+    allocSet.add("start");
+
+    // ── Draw connections ────────────────────────────────────────────────
     const drawn = new Set();
     for (const nd of PASSIVE_NODES) {
-      const ax = nd.x * sx, ay = nd.y * sy;
       for (const cid of (nd.connections || [])) {
         const edgeKey = [nd.id, cid].sort().join("|");
         if (drawn.has(edgeKey)) continue;
         drawn.add(edgeKey);
         const cn = PASSIVE_NODE_MAP.get(cid);
         if (!cn) continue;
-        const bx = cn.x * sx, by = cn.y * sy;
-        const alloc = allocSet.has(nd.id) && allocSet.has(cid);
+        const bothAlloc = allocSet.has(nd.id) && allocSet.has(cid);
+        const col = bothAlloc
+          ? (REGION_COLOR[nd.region] ?? "#fff") + "99"
+          : "rgba(255,255,255,0.09)";
         c.beginPath();
-        c.moveTo(ax, ay);
-        c.lineTo(bx, by);
-        c.strokeStyle = alloc ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.12)";
-        c.lineWidth = alloc ? 2 * dpr : 1.5 * dpr;
+        c.moveTo(nd.x, nd.y);
+        c.lineTo(cn.x, cn.y);
+        c.strokeStyle = col;
+        c.lineWidth   = bothAlloc ? 2.5 : 1.2;
         c.stroke();
       }
     }
 
-    // Draw nodes
+    // ── Draw nodes ───────────────────────────────────────────────────────
     for (const nd of PASSIVE_NODES) {
-      const px = nd.x * sx, py = nd.y * sy;
-      const r = poeNodeRadius(nd.type) * dpr;
+      const r     = poeNodeRadius(nd.type);
       const alloc = allocSet.has(nd.id);
       const hover = poeHoverNode?.id === nd.id;
+      const sel   = poeSelNode?.id === nd.id;
       const avail = !alloc && canAllocate(meta, nd.id).ok;
-      const col = REGION_COLOR[nd.region] ?? "#fff";
+      const col   = REGION_COLOR[nd.region] ?? "#fff";
 
-      // Glow ring for allocated or hovered
-      if (alloc || hover) {
+      // outer glow
+      if (alloc || hover || sel) {
+        const glowR = r + (sel ? 9 : hover ? 7 : 5);
+        const gr    = c.createRadialGradient(nd.x, nd.y, r * 0.5, nd.x, nd.y, glowR);
+        gr.addColorStop(0, col + (sel ? "55" : alloc ? "33" : "22"));
+        gr.addColorStop(1, col + "00");
         c.beginPath();
-        c.arc(px, py, r + 5 * dpr, 0, Math.PI * 2);
-        c.fillStyle = alloc ? col + "28" : "rgba(255,255,255,0.14)";
+        c.arc(nd.x, nd.y, glowR, 0, Math.PI * 2);
+        c.fillStyle = gr;
         c.fill();
       }
 
-      // Node fill
-      c.beginPath();
-      c.arc(px, py, r, 0, Math.PI * 2);
-      c.fillStyle = alloc ? col : (avail ? col + "44" : "rgba(20,28,46,0.90)");
-      c.fill();
-
-      // Border
-      c.beginPath();
-      c.arc(px, py, r, 0, Math.PI * 2);
-      c.strokeStyle = alloc ? col : (avail ? col + "aa" : "rgba(255,255,255,0.22)");
-      c.lineWidth = nd.type === NODE_TYPE.KEYSTONE ? 2.5 * dpr : 1.5 * dpr;
-      c.stroke();
-
-      // Hover outline
-      if (hover) {
-        c.beginPath();
-        c.arc(px, py, r + 3 * dpr, 0, Math.PI * 2);
-        c.strokeStyle = "rgba(255,255,255,0.75)";
-        c.lineWidth = 1.5 * dpr;
-        c.stroke();
-      }
-
-      // Keystone inner mark
+      // Keystone: diamond shape
       if (nd.type === NODE_TYPE.KEYSTONE) {
+        c.save();
+        c.translate(nd.x, nd.y);
+        c.rotate(Math.PI / 4);
+        const s = r * 1.35;
         c.beginPath();
-        c.arc(px, py, r * 0.45, 0, Math.PI * 2);
-        c.fillStyle = alloc ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.10)";
+        c.rect(-s, -s, s * 2, s * 2);
+        c.fillStyle = alloc ? col + "dd"
+                    : avail ? col + "33"
+                    : "rgba(16,22,40,0.95)";
         c.fill();
+        c.strokeStyle = alloc ? col
+                       : avail ? col + "cc"
+                       : "rgba(255,255,255,0.25)";
+        c.lineWidth = sel ? 3 : 2;
+        c.stroke();
+        // inner diamond
+        const si = s * 0.52;
+        c.beginPath();
+        c.rect(-si, -si, si * 2, si * 2);
+        c.strokeStyle = alloc ? "rgba(0,0,0,0.5)" : col + "22";
+        c.lineWidth = 1;
+        c.stroke();
+        c.restore();
+
+        // glyph
+        if (nd.glyph) {
+          c.save();
+          c.font = `bold ${r * 1.2}px sans-serif`;
+          c.textAlign    = "center";
+          c.textBaseline = "middle";
+          c.fillStyle = alloc ? "rgba(0,0,0,0.85)"
+                       : avail ? col + "ee"
+                       : "rgba(255,255,255,0.28)";
+          c.fillText(nd.glyph, nd.x, nd.y);
+          c.restore();
+        }
+
+      } else if (nd.type === NODE_TYPE.NOTABLE) {
+        // Notable: hexagon
+        c.save();
+        c.beginPath();
+        for (let k = 0; k < 6; k++) {
+          const a = (k * Math.PI) / 3 - Math.PI / 6;
+          const px = nd.x + r * 1.15 * Math.cos(a);
+          const py = nd.y + r * 1.15 * Math.sin(a);
+          k === 0 ? c.moveTo(px, py) : c.lineTo(px, py);
+        }
+        c.closePath();
+        c.fillStyle   = alloc ? col + "dd" : avail ? col + "33" : "rgba(16,22,40,0.95)";
+        c.fill();
+        c.strokeStyle = alloc ? col : avail ? col + "bb" : "rgba(255,255,255,0.22)";
+        c.lineWidth   = sel ? 2.5 : 1.8;
+        c.stroke();
+        c.restore();
+
+        if (nd.glyph) {
+          c.save();
+          c.font = `${r * 1.0}px sans-serif`;
+          c.textAlign    = "center";
+          c.textBaseline = "middle";
+          c.fillStyle = alloc ? "rgba(0,0,0,0.80)"
+                       : avail ? col + "dd"
+                       : "rgba(255,255,255,0.25)";
+          c.fillText(nd.glyph, nd.x, nd.y);
+          c.restore();
+        }
+
+      } else {
+        // Regular / Start: circle
+        c.beginPath();
+        c.arc(nd.x, nd.y, r, 0, Math.PI * 2);
+        c.fillStyle = alloc ? col + "dd"
+                    : avail ? col + "2a"
+                    : nd.type === NODE_TYPE.START ? "rgba(255,255,255,0.15)"
+                    : "rgba(14,20,38,0.95)";
+        c.fill();
+        c.strokeStyle = alloc ? col
+                       : avail ? col + "aa"
+                       : nd.type === NODE_TYPE.START ? "rgba(255,255,255,0.70)"
+                       : "rgba(255,255,255,0.18)";
+        c.lineWidth = sel ? 2.5 : nd.type === NODE_TYPE.START ? 2.5 : 1.5;
+        c.stroke();
+
+        if (nd.glyph) {
+          c.save();
+          c.font = `${nd.type === NODE_TYPE.START ? r * 1.1 : r * 0.90}px sans-serif`;
+          c.textAlign    = "center";
+          c.textBaseline = "middle";
+          c.fillStyle = alloc ? "rgba(0,0,0,0.80)"
+                       : avail ? col + "cc"
+                       : nd.type === NODE_TYPE.START ? "rgba(255,255,255,0.85)"
+                       : "rgba(255,255,255,0.22)";
+          c.fillText(nd.glyph, nd.x, nd.y);
+          c.restore();
+        }
+      }
+
+      // selected ring
+      if (sel) {
+        c.beginPath();
+        c.arc(nd.x, nd.y, r + 6, 0, Math.PI * 2);
+        c.strokeStyle = "rgba(255,255,255,0.80)";
+        c.lineWidth   = 2;
+        c.setLineDash([4, 3]);
+        c.stroke();
+        c.setLineDash([]);
       }
     }
+
+    c.restore();
   }
 
-  function updatePoeDetail(nd) {
-    if (!skillDetail) return;
-    if (!nd) { skillDetail.innerHTML = `<div class="small">노드를 클릭하거나 마우스를 올려 정보를 확인하세요.</div>`; return; }
+  // ── Floating node info panel ─────────────────────────────────────────────
+  let snpPanel = null;
+
+  function getSnpPanel() {
+    if (!snpPanel) snpPanel = document.getElementById("skill-node-panel");
+    return snpPanel;
+  }
+
+  function showNodePanel(nd) {
+    const panel = getSnpPanel();
+    if (!panel) return;
+    poeSelNode = nd;
+
+    if (!nd) { panel.classList.add("hidden"); drawPoeTree(); return; }
+
     const allocSet = new Set(meta.allocated ?? []);
     allocSet.add("start");
-    const alloc = allocSet.has(nd.id);
-    const chk = canAllocate(meta, nd.id);
-    const cost = NODE_COST[nd.type] ?? 30;
-    const col = REGION_COLOR[nd.region] ?? "#fff";
-    const typeLabel = { start: "시작점", keystone: "키스톤", notable: "주요 노드", regular: "일반 노드" }[nd.type] ?? "노드";
+    const alloc    = allocSet.has(nd.id);
+    const chkBuy   = canAllocate(meta, nd.id);
+    const chkRef   = canDeallocate(meta, nd.id);
+    const cost     = NODE_COST[nd.type] ?? 25;
+    const col      = REGION_COLOR[nd.region] ?? "#fff";
+    const typeLbl  = { start:"시작점", keystone:"⬛ 키스톤", notable:"⬡ 주요 노드", regular:"● 일반 노드" }[nd.type] ?? "노드";
+
     let statusHtml = "";
-    if (alloc) {
-      statusHtml = `<div class="small" style="color:${col};margin-top:6px;">✓ 활성화됨</div>`;
-    } else if (!chk.ok) {
-      const msg = chk.reason === "NOT_CONNECTED" ? "잠김: 인접 노드를 먼저 활성화하세요"
-        : chk.reason === "NO_XP" ? `XP 부족: ${cost} XP 필요`
-        : "활성화 불가";
-      statusHtml = `<div class="small" style="color:rgba(255,107,107,0.9);margin-top:6px;">${msg}</div>`;
+    if (nd.type === NODE_TYPE.START) {
+      statusHtml = `<div class="snp-status" style="color:rgba(255,255,255,0.55);">항상 활성화됨</div>`;
+    } else if (alloc) {
+      const refMsg = chkRef.ok ? `환불 가능 (+${chkRef.cost} XP)` : "환불 불가 (다른 노드가 연결됨)";
+      statusHtml = `<div class="snp-status" style="color:${col};">✓ 활성화됨</div><div class="snp-refund-hint">${refMsg}</div>`;
+    } else if (!chkBuy.ok) {
+      const msg = chkBuy.reason === "NOT_CONNECTED" ? "🔒 연결된 노드를 먼저 활성화하세요"
+                : chkBuy.reason === "NO_XP"         ? `XP 부족 (필요: ${cost} XP)`
+                : "활성화 불가";
+      statusHtml = `<div class="snp-status" style="color:#ff6b6b;">${msg}</div>`;
     } else {
-      statusHtml = `<div class="small" style="color:#a9e34b;margin-top:6px;">활성화 가능 (${cost} XP)</div>`;
+      statusHtml = `<div class="snp-status" style="color:#a9e34b;">활성화 가능 · ${cost} XP</div>`;
     }
-    const allocBtnHtml = (!alloc && nd.type !== NODE_TYPE.START)
-      ? `<button id="poe-alloc-btn" ${chk.ok ? "" : "disabled"}>활성화</button>`
-      : "";
-    skillDetail.innerHTML = `
-      <div class="big" style="color:${col}">${safeText(nd.name)}</div>
-      <div class="small" style="margin-bottom:6px;opacity:0.6;">${typeLabel}</div>
-      <div class="desc">${safeText(nd.desc)}</div>
+
+    const buyDisabled  = alloc || !chkBuy.ok || nd.type === NODE_TYPE.START;
+    const refDisabled  = !chkRef.ok;
+
+    panel.innerHTML = `
+      <div class="snp-header">
+        <span class="snp-glyph" style="color:${col}">${nd.glyph || "·"}</span>
+        <div class="snp-title" style="color:${col}">${safeText(nd.name)}</div>
+        <button class="snp-close-btn">✕</button>
+      </div>
+      <div class="snp-type">${typeLbl}</div>
+      <div class="snp-desc">${safeText(nd.desc)}</div>
       ${statusHtml}
-      <div class="meta" style="margin-top:10px;">보유 XP: <b>${meta.xp ?? 0}</b>${nd.type !== NODE_TYPE.START ? ` · 비용: <b>${cost}</b>` : ""}</div>
-      <div class="btnrow">${allocBtnHtml}<button id="skill-close2">닫기</button></div>`;
-    const allocBtn = document.getElementById("poe-alloc-btn");
-    if (allocBtn) allocBtn.addEventListener("click", () => {
-      if (allocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); drawPoeTree(); updatePoeDetail(nd); }
+      <div class="snp-xp">보유 XP: <b>${meta.xp ?? 0}</b>${nd.type !== NODE_TYPE.START ? ` &nbsp;·&nbsp; 비용: <b>${cost}</b>` : ""}</div>
+      <div class="snp-btnrow">
+        ${!alloc && nd.type !== NODE_TYPE.START
+          ? `<button id="snp-buy" ${buyDisabled ? "disabled" : ""}>구매</button>` : ""}
+        ${alloc && nd.type !== NODE_TYPE.START
+          ? `<button id="snp-refund" class="snp-refund" ${refDisabled ? "disabled" : ""}>환불</button>` : ""}
+      </div>`;
+
+    panel.classList.remove("hidden");
+    drawPoeTree();
+
+    panel.querySelector(".snp-close-btn")?.addEventListener("click", () => {
+      poeSelNode = null; panel.classList.add("hidden"); drawPoeTree();
     });
-    const c2 = document.getElementById("skill-close2");
-    if (c2) c2.addEventListener("click", () => closeSkillTree());
+    document.getElementById("snp-buy")?.addEventListener("click", () => {
+      if (allocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); showNodePanel(nd); }
+    });
+    document.getElementById("snp-refund")?.addEventListener("click", () => {
+      if (deallocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); showNodePanel(nd); }
+    });
   }
 
   function initPassiveTreeUI() {
@@ -1271,41 +1421,93 @@ export async function initEngine() {
     poeCtx = poeCanvas.getContext("2d");
 
     function resizePoeCanvas() {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr  = window.devicePixelRatio || 1;
       const rect = poeCanvas.getBoundingClientRect();
-      poeCanvas.width = Math.round(rect.width * dpr);
+      poeCanvas.width  = Math.round(rect.width  * dpr);
       poeCanvas.height = Math.round(rect.height * dpr);
+      // Center world on canvas
+      poeScale = Math.min(rect.width / POE_W, rect.height / POE_H) * 0.88;
+      poeOffX  = (rect.width  - POE_W * poeScale) / 2;
+      poeOffY  = (rect.height - POE_H * poeScale) / 2;
       drawPoeTree();
     }
 
+    // ── Wheel: zoom centered on cursor ──────────────────────────────────
+    poeCanvas.addEventListener("wheel", (ev) => {
+      ev.preventDefault();
+      const rect  = poeCanvas.getBoundingClientRect();
+      const ex    = ev.clientX - rect.left;
+      const ey    = ev.clientY - rect.top;
+      const delta = ev.deltaY > 0 ? 0.88 : 1.14;
+      const newScale = Math.max(0.20, Math.min(2.5, poeScale * delta));
+      // Keep the world point under cursor fixed
+      poeOffX = ex - (ex - poeOffX) * (newScale / poeScale);
+      poeOffY = ey - (ey - poeOffY) * (newScale / poeScale);
+      poeScale = newScale;
+      drawPoeTree();
+    }, { passive: false });
+
+    // ── Drag: pan ────────────────────────────────────────────────────────
+    poeCanvas.addEventListener("pointerdown", (ev) => {
+      poeDrag      = true;
+      poeDragMoved = false;
+      poeDragX     = ev.clientX;
+      poeDragY     = ev.clientY;
+      poeDragOX    = poeOffX;
+      poeDragOY    = poeOffY;
+      poeCanvas.setPointerCapture(ev.pointerId);
+    });
+
     poeCanvas.addEventListener("pointermove", (ev) => {
-      const r = poeCanvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      const cx = (ev.clientX - r.left) * dpr;
-      const cy = (ev.clientY - r.top) * dpr;
-      const nd = poeFindNode(cx, cy);
+      const rect = poeCanvas.getBoundingClientRect();
+      const ex   = ev.clientX - rect.left;
+      const ey   = ev.clientY - rect.top;
+
+      if (poeDrag) {
+        const dx = ev.clientX - poeDragX;
+        const dy = ev.clientY - poeDragY;
+        if (Math.abs(dx) + Math.abs(dy) > 4) poeDragMoved = true;
+        poeOffX = poeDragOX + dx;
+        poeOffY = poeDragOY + dy;
+        drawPoeTree();
+        poeCanvas.style.cursor = "grabbing";
+        return;
+      }
+
+      const nd = poeFindNode(ex, ey);
       if (nd?.id !== poeHoverNode?.id) {
         poeHoverNode = nd;
         drawPoeTree();
-        if (nd) updatePoeDetail(nd);
       }
-      poeCanvas.style.cursor = nd ? "pointer" : "default";
+      poeCanvas.style.cursor = nd ? "pointer" : "grab";
+    });
+
+    poeCanvas.addEventListener("pointerup", (ev) => {
+      poeDrag = false;
+      poeCanvas.style.cursor = "grab";
+      if (poeDragMoved) return; // was a pan, not a click
+
+      const rect = poeCanvas.getBoundingClientRect();
+      const ex   = ev.clientX - rect.left;
+      const ey   = ev.clientY - rect.top;
+      const nd   = poeFindNode(ex, ey);
+      if (nd) {
+        showNodePanel(nd);
+      } else {
+        // click on empty → deselect
+        poeSelNode = null;
+        const panel = getSnpPanel();
+        if (panel) panel.classList.add("hidden");
+        drawPoeTree();
+      }
     });
 
     poeCanvas.addEventListener("pointerleave", () => {
-      poeHoverNode = null;
-      drawPoeTree();
-    });
-
-    poeCanvas.addEventListener("click", (ev) => {
-      const r = poeCanvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      const cx = (ev.clientX - r.left) * dpr;
-      const cy = (ev.clientY - r.top) * dpr;
-      const nd = poeFindNode(cx, cy);
-      if (!nd) return;
-      updatePoeDetail(nd);
-      if (allocateNode(meta, nd.id)) { saveMetaState(meta); syncMetaUI(); drawPoeTree(); updatePoeDetail(nd); }
+      if (!poeDrag) {
+        poeHoverNode = null;
+        drawPoeTree();
+        poeCanvas.style.cursor = "grab";
+      }
     });
 
     if (typeof ResizeObserver !== "undefined") {
@@ -1318,18 +1520,23 @@ export async function initEngine() {
     if (!skillOverlay) return;
     buyMenu.classList.add("hidden"); tooltip.classList.add("hidden");
     skillOverlay.classList.remove("hidden"); state.uiPause = true;
+    poeSelNode = null;
+    const panel = getSnpPanel();
+    if (panel) panel.classList.add("hidden");
     if (!poeCanvas) {
       initPassiveTreeUI();
     } else {
       requestAnimationFrame(() => {
-        const dpr = window.devicePixelRatio || 1;
+        const dpr  = window.devicePixelRatio || 1;
         const rect = poeCanvas.getBoundingClientRect();
-        poeCanvas.width = Math.round(rect.width * dpr);
+        poeCanvas.width  = Math.round(rect.width  * dpr);
         poeCanvas.height = Math.round(rect.height * dpr);
+        poeScale = Math.min(rect.width / POE_W, rect.height / POE_H) * 0.88;
+        poeOffX  = (rect.width  - POE_W * poeScale) / 2;
+        poeOffY  = (rect.height - POE_H * poeScale) / 2;
         drawPoeTree();
       });
     }
-    updatePoeDetail(null);
   }
 
   function closeSkillTree() {

@@ -206,15 +206,10 @@
         <div class="skill-xp"><b>XP</b>: <span id="skill-xp">0</span></div>
         <button id="skill-close">닫기</button>
       </div>
-      <div class="modal-body">
-        <div class="small" style="margin-bottom:10px;">런이 끝나면 XP를 얻습니다. 스킬로 다음 런을 강화하세요.</div>
-        <div class="skill-layout">
-          <div class="skill-tree-wrap" id="skill-tree-wrap">
-            <canvas id="poe-tree-canvas" class="poe-tree-canvas"></canvas>
-          </div>
-          <div id="skill-detail" class="skill-detail">
-            <div class="small">노드를 클릭하거나 마우스를 올려 정보를 확인하세요.</div>
-          </div>
+      <div class="modal-body skill-modal-body">
+        <div class="skill-tree-wrap" id="skill-tree-wrap">
+          <canvas id="poe-tree-canvas" class="poe-tree-canvas"></canvas>
+          <div id="skill-node-panel" class="skill-node-panel hidden"></div>
         </div>
       </div>
     </div>
