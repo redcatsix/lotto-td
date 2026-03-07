@@ -225,7 +225,7 @@ button:focus-visible{outline:2px solid rgba(116,192,252,0.9);outline-offset:2px}
 
 .hidden{display:none !important;}
 
-#tooltip-panel{width:380px;}
+#tooltip-panel{width:420px;}
 #tt-header{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px;}
 #tt-title{font-weight:800;letter-spacing:0.2px;flex:1;}
 #tt-close{
@@ -282,7 +282,8 @@ button:focus-visible{outline:2px solid rgba(116,192,252,0.9);outline-offset:2px}
 }
 .mod-opt-row{display:flex;flex-direction:column;gap:2px;margin-bottom:5px;padding:4px 8px;background:rgba(255,255,255,0.03);border-radius:5px;border-left:2px solid rgba(255,255,255,0.10);}
 .mod-opt-old{font-size:11px;color:rgba(255,255,255,0.32);text-decoration:line-through;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mod-opt-new{display:flex;align-items:center;gap:5px;font-size:12.5px;line-height:1.35;}
+.mod-opt-new{display:flex;align-items:center;gap:5px;font-size:12.5px;line-height:1.35;overflow:hidden;min-width:0;}
+.mod-opt-new>span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .mod-arrow{color:rgba(120,200,120,0.70);font-size:11px;flex-shrink:0;}
 .mod-opt-row.mod-pinned{border-left-color:rgba(255,212,59,0.50);background:rgba(255,212,59,0.06);}
 .mod-preview-actions{display:flex;gap:8px;margin-top:8px;}
